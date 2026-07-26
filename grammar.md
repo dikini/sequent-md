@@ -24,7 +24,7 @@ declaration = family | rule ;
 family = "family" identifier ":" newline indent { rule } dedent ;
 rule = identifier assignment newline indent inference dedent ;
 assignment = ":=" | "::=" ;
-identifier = /[a-zA-Z_][a-zA-Z0-9_]*/ ;
+identifier = [a-zA-Z_][a-zA-Z0-9_]* ;
 ```
 
 ## Inferences
@@ -44,7 +44,7 @@ conclusion = formula | bracket_group ;
 bracket_group = "[" bracket_content "]" ;
 bracket_content = formula | inference ;
 deduction = "=>" | "===>" ;
-formula = /[^\n]+/ ;
+formula = [^\n]+ ;
 ```
 
 In source text, a multi-line bracket group places its opening and closing
