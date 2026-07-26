@@ -249,7 +249,7 @@ function parseInferenceTokens(tokens, state, fallbackLine) {
   }
   const premiseTokens = tokens.slice(0, split);
   const conclusionTokens = tokens.slice(split + 1);
-  const premises = parseExpressions(premiseTokens, state, fallbackLine);
+  const premises = parseExpressions(premiseTokens, state, fallbackLine, { allowEmpty: true });
   const conclusions = parseExpressions(conclusionTokens, state, fallbackLine);
 
   if (premises === null || conclusions === null) return null;
@@ -289,7 +289,7 @@ function findTopLevelDeduction(tokens) {
   return -1;
 }
 
-function parseExpressions(tokens, state, fallbackLine) {
+function parseExpressions(tokens, state, fallbackLine, { allowEmpty = false } = {}) {
   const expressions = [];
   let expectsExpression = true;
   let sawSeparator = false;
@@ -330,6 +330,7 @@ function parseExpressions(tokens, state, fallbackLine) {
   }
 
   if (expressions.length === 0) {
+    if (allowEmpty) return expressions;
     diagnostic(state, { line: fallbackLine }, 'Expected at least one premise or conclusion.');
     return null;
   }

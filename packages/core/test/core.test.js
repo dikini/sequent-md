@@ -115,3 +115,16 @@ test('accepts compact bracket groups and pipe separators', () => {
   assert.equal(result.diagnostics.length, 0);
   assert.equal(result.tree.children[0].premises.length, 2);
 });
+
+test('parses and renders a zero-premise rule', () => {
+  const source = `ExcludedMiddle :=
+  ===>
+  Γ |- A \\/ ~A`;
+  const parsed = parse(source);
+  const rendered = render(source);
+
+  assert.equal(parsed.diagnostics.length, 0);
+  assert.deepEqual(parsed.tree.children[0].premises, []);
+  assert.match(rendered.html, /class="sequent-bar"/);
+  assert.match(rendered.html, /Γ ⊢ A ∨ ¬A/);
+});

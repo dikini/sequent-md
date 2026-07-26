@@ -22,3 +22,13 @@ test('leaves non-sequent fences to markdown-it', () => {
 
   assert.match(html, /language-js/);
 });
+
+test('renders a zero-premise sequent fence as an axiom', () => {
+  const markdown = new MarkdownIt();
+  activate().extendMarkdownIt(markdown);
+
+  const html = markdown.render('```sequent\nExcludedMiddle :=\n  ===>\n  Γ |- A \\/ ~A\n```');
+
+  assert.match(html, /class="sequent-bar"/);
+  assert.match(html, /Γ ⊢ A ∨ ¬A/);
+});
