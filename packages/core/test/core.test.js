@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parse, render } from '../src/index.js';
+import { parse, render, styles } from '../src/index.js';
 
 test('renders a named inference with normalized symbols', () => {
   const result = render(`Identity :=
@@ -127,4 +127,11 @@ test('parses and renders a zero-premise rule', () => {
   assert.deepEqual(parsed.tree.children[0].premises, []);
   assert.match(rendered.html, /class="sequent-bar"/);
   assert.match(rendered.html, /Γ ⊢ A ∨ ¬A/);
+});
+
+test('styles the inference bar as the full proof-width track beside its label', () => {
+  assert.match(styles, /\.sequent-proof \{[^}]*grid-template-columns: max-content auto/);
+  assert.match(styles, /\.sequent-inference \{[^}]*display: contents/);
+  assert.match(styles, /\.sequent-bar \{[^}]*grid-column: 1/);
+  assert.match(styles, /\.sequent-rule-label \{[^}]*grid-column: 2/);
 });
