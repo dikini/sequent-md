@@ -11,7 +11,7 @@ API, and package structure are not yet defined.
 The current syntax sketch uses indentation to group a deduction under a named
 rule. For example:
 
-```ebnf
+```sequent
 identity :=
   A |- A
   ===>
