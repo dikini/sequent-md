@@ -1,0 +1,26 @@
+{
+  "name": "sequent-md-vscode",
+  "displayName": "Sequent Markdown",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "contributes": {
+    "markdown.markdownItPlugins": true,
+    "markdown.previewStyles": [
+      "./media/sequent.css"
+    ]
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@sequent-md/core": "file:../core"
+  }
+}

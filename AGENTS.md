@@ -7,13 +7,15 @@ initial integration targets are Visual Studio Markdown Preview and remark/rehype
 
 ## Conventions
 
-- Use `ebnf` code fences for syntax examples.
+- Use `sequent` code fences for renderer input examples; use `ebnf` only for
+  grammar-specification examples.
 - Treat the current Markdown drafts as non-normative reference material; do not
   present them as the language specification.
 - Preserve compatibility with both initial integration paths when proposing
   renderer behavior or APIs.
-- Keep contributor guidance lean until the project adopts a package layout,
-  parser, and test tooling.
+- Keep parsing, rendering, symbol normalization, and styles in the shared core;
+  host packages adapt that core rather than duplicating it.
+- Run `npm test` and `npm run build` after JavaScript changes.
 
 ## Worktrees
 

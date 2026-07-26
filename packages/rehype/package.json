@@ -1,0 +1,9 @@
+{
+  "name": "@sequent-md/rehype",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.js",
+  "dependencies": {
+    "@sequent-md/core": "file:../core"
+  }
+}

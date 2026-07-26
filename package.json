@@ -1,0 +1,16 @@
+{
+  "name": "sequent-md",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "markdown-it": "^14.3.0"
+  }
+}

@@ -1,1 +1,4 @@
 .worktrees/
+node_modules/
+packages/vscode/dist/
+packages/vscode/media/sequent.css
