@@ -9,13 +9,45 @@ const DEFAULT_SYMBOLS = {
   '~': '¬',
   forall: '∀',
   exists: '∃',
+  GAMMA: 'Γ',
+  DELTA: 'Δ',
+  TAU: 'Τ',
+  PI: 'Π',
+  THETA: 'Θ',
+  SIGMA: 'Σ',
+  alpha: 'α',
+  beta: 'β',
+  gamma: 'γ',
+  delta: 'δ',
+  epsilon: 'ε',
+  theta: 'θ',
   lambda: 'λ',
   mu: 'μ',
   pi: 'π',
   tau: 'τ',
   eta: 'η',
+  rho: 'ρ',
+  sigma: 'σ',
+  phi: 'φ',
+  omega: 'ω',
   box: '□',
   diamond: '◇',
+  always: '□',
+  eventually: '◇',
+  next: '○',
+  until: 'U',
+  release: 'R',
+  '-*': '⊸',
+  '-o': '⊸',
+  tensor: '⊗',
+  par: '⅋',
+  with: '&',
+  plus: '⊕',
+  one: '1',
+  zero: '0',
+  bottom: '⊥',
+  bot: '⊥',
+  top: '⊤',
   union: '∪',
   intersect: '∩'
 };
@@ -204,9 +236,9 @@ function tokenizeLine(text, line, initialDepth) {
     const previous = text[index - 1] ?? ' ';
     const next = text[index + 1] ?? ' ';
     const hasSpaceBefore = /\s/.test(previous);
-    const closeBoundary = /\s/.test(next) || next === '|' || next === ']';
+    const closeBoundary = /\s/.test(next) || next === '[' || next === ']';
 
-    if (character === '[' && (depth > 0 || index === 0 || hasSpaceBefore)) {
+    if (character === '[' && (depth > 0 || index === 0 || hasSpaceBefore || previous === ']')) {
       flush();
       tokens.push({ type: 'open', line });
       depth += 1;
@@ -216,11 +248,6 @@ function tokenizeLine(text, line, initialDepth) {
       flush();
       tokens.push({ type: 'close', line });
       depth -= 1;
-      continue;
-    }
-    if (character === '|' && next !== '-' && next !== '=') {
-      flush();
-      tokens.push({ type: 'pipe', line });
       continue;
     }
     buffer += character;
@@ -291,23 +318,10 @@ function findTopLevelDeduction(tokens) {
 
 function parseExpressions(tokens, state, fallbackLine, { allowEmpty = false } = {}) {
   const expressions = [];
-  let expectsExpression = true;
-  let sawSeparator = false;
   for (let index = 0; index < tokens.length;) {
     const token = tokens[index];
-    if (token.type === 'pipe') {
-      if (expectsExpression) {
-        diagnostic(state, token, 'A premise separator must separate two premises.');
-        return null;
-      }
-      expectsExpression = true;
-      sawSeparator = true;
-      index += 1;
-      continue;
-    }
     if (token.type === 'formula') {
       expressions.push({ type: 'formula', value: token.value });
-      expectsExpression = false;
       index += 1;
       continue;
     }
@@ -321,7 +335,6 @@ function parseExpressions(tokens, state, fallbackLine, { allowEmpty = false } = 
       const expression = parseBracketGroup(inner, state, token.line);
       if (expression === null) return null;
       expressions.push(expression);
-      expectsExpression = false;
       index = end + 1;
       continue;
     }
@@ -332,10 +345,6 @@ function parseExpressions(tokens, state, fallbackLine, { allowEmpty = false } = 
   if (expressions.length === 0) {
     if (allowEmpty) return expressions;
     diagnostic(state, { line: fallbackLine }, 'Expected at least one premise or conclusion.');
-    return null;
-  }
-  if (sawSeparator && expectsExpression) {
-    diagnostic(state, tokens.at(-1), 'A premise separator must be followed by a premise.');
     return null;
   }
   return expressions;

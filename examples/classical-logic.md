@@ -9,7 +9,7 @@ for negation. A renderer displays the related rules in each family responsively.
 ```sequent
 family conjunction:
   AndIntro :=
-    Γ |- A | Γ |- B
+    [ Γ |- A ] [ Γ |- B ]
     ===>
     Γ |- A /\ B
 
@@ -56,7 +56,7 @@ family implication:
     Γ |- A -> B
 
   ImpElim :=
-    Γ |- A -> B | Γ |- A
+    [ Γ |- A -> B ] [ Γ |- A ]
     ===>
     Γ |- B
 ```

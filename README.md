@@ -30,7 +30,7 @@ grids: rules share a row when space permits and stack on narrow previews.
 ```sequent
 family conjunction:
   AndIntro :=
-    Γ |- A | Γ |- B
+    [ Γ |- A ] [ Γ |- B ]
     ===>
     Γ |- A /\ B
 
@@ -59,14 +59,25 @@ Outer :=
 
 ### Keyboard notation
 
-Formula text accepts Unicode directly. Common ASCII spellings render as standard
-symbols: `|-` → `⊢`, `|=` → `⊨`, `->` → `→`, `/\` → `∧`, `\/` → `∨`,
-and `lambda` → `λ`. The core `render` and rehype plugin accept a `symbols`
-option that adds to or overrides these aliases. Word aliases only match complete
-words, so `lambdaValue` remains unchanged.
+Formula text accepts Unicode directly. The default aliases include:
 
-Structural tokens (`:=`, `::=`, `=>`, `===>`, grouping brackets, and premise
-separators) are never normalized as formula aliases.
+- logic: `|-` → `⊢`, `|=` → `⊨`, `->` → `→`, `/\` → `∧`, `\/` → `∨`;
+- Greek/context names: `GAMMA` → `Γ`, `DELTA` → `Δ`, and names such as
+  `alpha`, `theta`, and `omega` → `α`, `θ`, and `ω`;
+- modal/temporal notation: `box`/`always`, `diamond`/`eventually`, `next`,
+  `until`, and `release` → `□`, `◇`, `○`, `U`, and `R`;
+- linear logic: `-*`/`-o`, `tensor`, `par`, `with`, `plus`, `one`, `zero`,
+  `bottom`/`bot`, and `top` → `⊸`, `⊗`, `⅋`, `&`, `⊕`, `1`, `0`, `⊥`, and
+  `⊤`.
+
+The core `render` and rehype plugin accept a `symbols` option that adds to or
+overrides these aliases. Word aliases only match complete words, so
+`lambdaValue` remains unchanged. Ordinary `+`, `-`, `*`, `/`, and `|` remain
+formula text; only the listed multi-character aliases normalize. Use adjacent
+bracket groups—`[ Γ |- A ] [ Γ |- B ]`—for parallel premises.
+
+Structural tokens (`:=`, `::=`, `=>`, `===>`, and grouping brackets) are never
+normalized as formula aliases.
 
 ## Packages
 
