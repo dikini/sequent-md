@@ -10,6 +10,7 @@ const examplesDirectory = fileURLToPath(new URL('../../../examples/', import.met
 test('every sequent example fence parses without diagnostics', async () => {
   const files = (await readdir(examplesDirectory)).filter((file) => file.endsWith('.md'));
   assert.ok(files.length >= 3);
+  assert.ok(files.includes('intuitionistic-linear-logic.md'));
 
   for (const file of files) {
     const markdown = await readFile(new URL(`../../../examples/${file}`, import.meta.url), 'utf8');
