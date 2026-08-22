@@ -24,7 +24,7 @@ declaration = family | rule ;
 family = "family" identifier ":" newline indent { rule } dedent ;
 rule = identifier assignment newline indent inference dedent ;
 assignment = ":=" | "::=" ;
-identifier = [a-zA-Z_][a-zA-Z0-9_]* ;
+identifier = [a-zA-Z_][a-zA-Z0-9_-]* ;
 ```
 
 ## Inferences
@@ -54,10 +54,12 @@ same row. `|` has no structural role; write it as part of a formula when needed.
 
 ## Names and notation
 
-Rule and family names use the `identifier` production above. Formula text is
-normalized only at render time through the documented keyboard aliases; the
-parser stores the original formula text. This means aliases never alter rule
-names, indentation, brackets, assignments, or deduction operators.
+Rule and family names use the `identifier` production above: they start with a
+letter or underscore, and hyphens are accepted after the first character along
+with letters, digits, and underscores. Formula text is normalized only at
+render time through the documented keyboard aliases; the parser stores the
+original formula text. This means aliases never alter rule names, indentation,
+brackets, assignments, or deduction operators.
 
 The EBNF fences in this file intentionally use the railroad project’s supported
 form: productions use `=`, end in `;`, quote terminals, and use

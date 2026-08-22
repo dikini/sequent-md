@@ -10,13 +10,13 @@ Write a `sequent` fence. The premises sit above the deduction bar and the
 conclusion below it:
 
 ```sequent
-AndIntro :=
+And-Intro :=
   [ GAMMA |- A ] [ GAMMA |- B ]
   ===>
   GAMMA |- A /\ B
 ```
 
-It renders as a rule named *AndIntro*, with `Γ ⊢ A` and `Γ ⊢ B` as sibling
+It renders as a rule named *And-Intro*, with `Γ ⊢ A` and `Γ ⊢ B` as sibling
 premises and `Γ ⊢ A ∧ B` as its conclusion.
 
 ## Use it
@@ -59,7 +59,9 @@ both the renderer and its stylesheet.
 ## Syntax at a glance
 
 - A named rule starts with `Name :=` or `Name ::=`, followed by an indented
-  proof. `=>` and `===>` both introduce the conclusion.
+  proof. Implemented names start with a letter or underscore, then may contain
+  letters, digits, underscores, and hyphens. `=>` and `===>` both introduce the
+  conclusion.
 - A deduction operator can appear first, creating a zero-premise rule (an
   axiom).
 - Bracketed derivations nest: `[ ... ]`. Adjacent bracket groups such as
