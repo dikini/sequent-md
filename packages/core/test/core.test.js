@@ -54,6 +54,27 @@ test('parses a related family as independent rules', () => {
   assert.equal(result.tree.children[0].rules[0].premises.length, 2);
 });
 
+test('parses a hyphenated rule name', () => {
+  const result = parse(`E-App1 :=
+  expression, store -> expression', store'
+  ===>
+  expression argument, store -> expression' argument, store'`);
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.tree.children[0].name, 'E-App1');
+});
+
+test('parses a hyphenated family name', () => {
+  const result = parse(`family small-step:
+  Step :=
+    expression, store -> expression', store'
+    ===>
+    expression argument, store -> expression' argument, store'`);
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.tree.children[0].name, 'small-step');
+});
+
 test('merges custom aliases and preserves word boundaries', () => {
   const result = render(`Rule :=
   lambdaValue |- entails
