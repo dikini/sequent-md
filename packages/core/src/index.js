@@ -52,7 +52,7 @@ const DEFAULT_SYMBOLS = {
   intersect: '∩'
 };
 
-const identifier = '[A-Za-z_][A-Za-z0-9_]*';
+const identifier = '[A-Za-z_][A-Za-z0-9_-]*';
 const ruleHeader = new RegExp(`^(${identifier})\\s*(?::=|::=)$`);
 const familyHeader = new RegExp(`^family\\s+(${identifier}):$`);
 
