@@ -12,7 +12,7 @@ test('keeps a continued judgment inside one premise in markdown-it', () => {
   activate().extendMarkdownIt(markdown);
   const html = markdown.render('```sequent\n' + continuation + '```');
   assert.equal((html.match(/class="sequent-formula"/g) ?? []).length, 2);
-  assert.ok(html.includes('for each corresponding (argument_i, parameter_i),\n  Δ; OMEGA; XI ⊢ argument_i =&gt; kind(parameter_i)'));
+  assert.ok(html.includes('for each corresponding (argument_i, parameter_i),\n  Δ; Ω; Ξ ⊢ argument_i =&gt; kind(parameter_i)'));
 });
 
 test('retains complete escaped invalid continuation source in markdown-it', () => {
@@ -51,4 +51,13 @@ test('renders a zero-premise sequent fence as an axiom', () => {
 
   assert.match(html, /class="sequent-bar"/);
   assert.match(html, /Γ ⊢ A ∨ ¬A/);
+});
+
+test('renders uppercase Greek environments in markdown-it with defaults', () => {
+  const markdown = new MarkdownIt();
+  activate().extendMarkdownIt(markdown);
+  const source = 'Environment-Notation :=\n    ===>\n    GAMMA; DELTA; OMEGA; XI; IOTA; PHI; MU |- expression ⇒ type';
+  const html = markdown.render('```sequent\n' + source + '\n```');
+  assert.equal(html.match(/class="sequent-formula">([^<]*)<\/span>/)[1],
+    'Γ; Δ; Ω; Ξ; Ι; Φ; Μ ⊢ expression ⇒ type');
 });
