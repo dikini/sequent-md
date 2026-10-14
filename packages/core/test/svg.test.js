@@ -9,6 +9,7 @@ import { renderSvg } from '@sequent-md/core/svg';
 import { parse, renderHast } from '../src/index.js';
 import { loadTypography } from '../src/svg-fonts.js';
 import { layoutDocument } from '../src/svg-layout.js';
+import { paragraphContext } from '../src/svg-shaping.js';
 
 const corpus = JSON.parse(await readFile(new URL('./fixtures/ash-pinned-corpus.json', import.meta.url)));
 const continued = await readFile(new URL('./fixtures/sequent-continuation.sequent', import.meta.url), 'utf8');
@@ -163,7 +164,7 @@ for (const [key, value] of [['fontSize', 0], ['fontSize', NaN], ['maxWidth', Inf
 }
 
 const typography = async (overrides = {}) => loadTypography({ fontSize: 17, ...overrides });
-const layout = async (source, overrides = {}) => layoutDocument(parse(source).tree, await typography(), { ...options, ...overrides });
+const layout = async (source, overrides = {}) => layoutDocument(parse(source).tree, await typography(overrides), { ...options, ...overrides });
 
 test('normalization matches HAST and covers built-in aliases including fallback lollipop', async () => {
   const notation = 'GAMMA DELTA TAU PI THETA SIGMA alpha beta gamma delta epsilon theta lambda mu pi tau eta rho sigma phi omega forall exists box diamond always eventually next until release tensor par with plus one zero bottom bot top union intersect <- -> <-> |- |= /\\ \\/ ~ -* -o';
@@ -236,6 +237,63 @@ test('inserted wraps retain the original source line bidi context', async () => 
   const glyphs = scene.glyphs.filter((g) => g.y >= lines[1].y && g.y < lines[1].y + lines[1].height);
   assert.deepEqual(glyphs.map((g) => g.glyphId), [...font.layout('سلام').glyphs.map((g) => g.id),
     ...font.layout('def').glyphs.map((g) => g.id)]);
+});
+
+test('supplementary bidi classes resolve as scalars and map to both surrogate offsets', () => {
+  // AL, R, NSM, EN, L and ON, including paragraph and isolate boundaries.
+  const scalars = ['\u{1EE00}', '\u{1E900}', '\u{1E944}', '\u{1D7CE}', '\u{1D400}', '\u{1F600}'];
+  const bmp = ['ا', 'א', '\u0300', '0', 'A', '!'];
+  for (const surround of [['x (', ') 12'], ['ا ', ' x'], ['x \u2067', '\u2069 x'], ['', '\nא']]) {
+    const source = surround[0] + scalars.join('') + surround[1];
+    const reference = surround[0] + bmp.join('') + surround[1];
+    const actual = paragraphContext(source);
+    const expected = paragraphContext(reference);
+    let offset = 0;
+    for (const [index, character] of [...source].entries()) {
+      assert.deepEqual([...actual.levels.slice(offset, offset + character.length)],
+        Array(character.length).fill(expected.levels[index]));
+      offset += character.length;
+    }
+    assert.deepEqual(actual.paragraphs.map((p) => p.level), expected.paragraphs.map((p) => p.level));
+  }
+});
+
+test('supplementary RTL scalars preserve glyph order in mixed text and inserted wraps', async () => {
+  // Extend the bundled static font's cmap in memory, retaining its layout
+  // tables and mapping mathematical Arabic scalars to covered Arabic outlines.
+  const original = await readFile(new URL('../fonts/DejaVuSansMono.ttf', import.meta.url));
+  const base = create(original);
+  const letters = '\u{1EE00}\u{1EE01}\u{1EE02}';
+  const mappings = [...base.characterSet.map((cp) => [cp, base.glyphForCodePoint(cp).id]),
+    ...[...letters].map((char, i) => [char.codePointAt(0), base.glyphForCodePoint(0x627 + i).id])];
+  const cmap = Buffer.alloc(28 + mappings.length * 12);
+  cmap.writeUInt16BE(1, 2); cmap.writeUInt16BE(3, 4); cmap.writeUInt16BE(10, 6);
+  cmap.writeUInt32BE(12, 8); cmap.writeUInt16BE(12, 12);
+  cmap.writeUInt32BE(cmap.length - 12, 16); cmap.writeUInt32BE(mappings.length, 24);
+  mappings.forEach(([cp, id], i) => {
+    const offset = 28 + i * 12;
+    cmap.writeUInt32BE(cp, offset); cmap.writeUInt32BE(cp, offset + 4); cmap.writeUInt32BE(id, offset + 8);
+  });
+  const regular = Buffer.concat([original, cmap]);
+  for (let i = 0; i < regular.readUInt16BE(4); i += 1) {
+    const offset = 12 + i * 16;
+    if (regular.toString('ascii', offset, offset + 4) === 'cmap') {
+      regular.writeUInt32BE(original.length, offset + 8); regular.writeUInt32BE(cmap.length, offset + 12);
+    }
+  }
+  const font = create(regular);
+  const expected = font.layout(letters, {}, undefined, undefined, 'rtl').glyphs.map((g) => g.id);
+  const t = await typography({ fonts: { regular } });
+  assert.deepEqual(t.shape(letters).glyphs.map((g) => g.glyphId), expected);
+  const x = font.glyphForCodePoint(120).id;
+  assert.deepEqual(t.shape('x ' + letters).glyphs.map((g) => g.glyphId), [x, ...expected]);
+  assert.deepEqual(t.shape(letters + ' x').glyphs.map((g) => g.glyphId), [x, ...expected]);
+  const scene = await layout('R :=\n  ===>\n  abcabcabcabc ' + letters + ' def', { maxWidth: 170, fonts: { regular } });
+  const lines = scene.texts.filter((t) => t.role === 'formula');
+  assert.deepEqual(lines.map((t) => t.text), ['abcabcabcabc ', letters + ' def']);
+  assert.deepEqual(scene.glyphs.filter((g) => g.y >= lines[1].y && g.y < lines[1].y + lines[1].height)
+    .map((g) => g.glyphId), [...expected, ...font.layout('def').glyphs.map((g) => g.id)]);
+  assertPortable(await renderSvg('R :=\n  ===>\n  ' + letters, { fonts: { regular } }));
 });
 
 test('bidi runs retain LTR digits inside an RTL paragraph', async () => {

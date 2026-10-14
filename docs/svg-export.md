@@ -77,6 +77,8 @@ selected face. Runs also split at Unicode script and bidi embedding boundaries,
 use explicit shaping direction, and are placed in resolved visual order. This
 keeps Arabic joining and LTR digit order intact in mixed-direction text. Visible
 wraps retain the resolved bidi context of their original explicit source line.
+Supplementary Unicode characters resolve as complete scalar values, with levels
+mapped back to source offsets for wrapping and grapheme segmentation.
 Visible run bounds and outlines always come from the same shaping operation. Separator
 spaces at an inserted wrap remain in canonical/logical text but are trimmed
 before both measuring and drawing that visual line.

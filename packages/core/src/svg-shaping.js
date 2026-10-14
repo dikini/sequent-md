@@ -3,10 +3,41 @@ import { getScript } from 'unicode-properties';
 
 const bidi = bidiFactory();
 const neutralScripts = new Set(['Common', 'Inherited', 'Unknown']);
+const representatives = new Map();
+let nextRepresentative = 0;
+
+function scalarView(text) {
+  const offsets = [];
+  let offset = 0;
+  const characters = [...text].map((character) => {
+    offsets.push(offset);
+    offset += character.length;
+    if (character.length === 1) return character;
+    // bidi-js's classifier accepts scalars, but its UBA loops index UTF-16
+    // units. Give those loops one BMP character per scalar, preserving each
+    // bidi class. Retain real BMP punctuation for bracket-pair resolution.
+    const type = bidi.getBidiCharTypeName(character);
+    while (!representatives.has(type) && nextRepresentative <= 0xffff) {
+      const candidate = String.fromCharCode(nextRepresentative++);
+      const name = bidi.getBidiCharTypeName(candidate);
+      if (!representatives.has(name)) representatives.set(name, candidate);
+    }
+    if (!representatives.has(type)) throw new Error(`Unsupported bidi class: ${type}`);
+    return representatives.get(type);
+  });
+  offsets.push(offset);
+  return { text: characters.join(''), offsets };
+}
 
 /** Resolve bidi once per explicit source line, before inserting visual wraps. */
 export function paragraphContext(text) {
-  return bidi.getEmbeddingLevels(text);
+  const scalars = scalarView(text);
+  const resolved = bidi.getEmbeddingLevels(scalars.text);
+  const levels = new Uint8Array(text.length);
+  resolved.levels.forEach((level, index) => levels.fill(level, scalars.offsets[index], scalars.offsets[index + 1]));
+  return { levels, paragraphs: resolved.paragraphs.map(({ start, end, level }) => ({
+    start: scalars.offsets[start], end: scalars.offsets[end + 1] - 1, level
+  })) };
 }
 
 // Synthetic hanging indentation uses the original paragraph base level.
@@ -19,11 +50,10 @@ export function sliceContext(context, start, length, indent = 0) {
 
 /** Resolve logical graphemes into homogeneous shaping runs in visual order. */
 export function shapingRuns(text, segmenter, selectFace, embedding = paragraphContext(text)) {
-  const mirrored = bidi.getMirroredCharactersMap(text, embedding.levels);
   const clusters = [...segmenter.segment(text)].map(({ segment, index }) => {
     let offset = index;
     const rendered = [...segment].map((character) => {
-      const replacement = mirrored.get(offset) ?? character;
+      const replacement = embedding.levels[offset] % 2 ? bidi.getMirroredCharacter(character) ?? character : character;
       offset += character.length;
       return replacement;
     }).join('');
@@ -64,7 +94,16 @@ export function shapingRuns(text, segmenter, selectFace, embedding = paragraphCo
   // original logical run and handles its glyph order using explicit direction.
   const seen = new Set();
   const visual = [];
-  for (const index of bidi.getReorderedIndices(text, embedding)) {
+  const scalars = scalarView(text);
+  const scalarIndices = new Map(scalars.offsets.map((offset, index) => [offset, index]));
+  const scalarEmbedding = {
+    levels: Uint8Array.from(scalars.offsets.slice(0, -1), (offset) => embedding.levels[offset]),
+    paragraphs: embedding.paragraphs.map(({ start, end, level }) => ({
+      start: scalarIndices.get(start), end: scalarIndices.get(end + 1) - 1, level
+    }))
+  };
+  for (const scalarIndex of bidi.getReorderedIndices(scalars.text, scalarEmbedding)) {
+    const index = scalars.offsets[scalarIndex];
     const runIndex = runAtIndex[index];
     if (!seen.has(runIndex)) {
       seen.add(runIndex);
