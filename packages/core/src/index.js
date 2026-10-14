@@ -186,9 +186,9 @@ function parseNamedRule(state, name, parentIndent) {
     if (current.text !== '') body.push(current);
   }
 
-  const tokenized = tokenizeBody(body);
-  if (!validateBodyIndentation(body, childIndent, tokenized.depthByLine, state)) return null;
-  const node = parseInferenceTokens(tokenized.tokens, state, header.line);
+  const tokens = tokenizeBody(body, childIndent, state);
+  if (tokens === null) return null;
+  const node = parseInferenceTokens(tokens, state, header.line);
   if (node) node.name = name;
   return node;
 }
@@ -207,17 +207,52 @@ function skipIndentedBlock(state, parentIndent) {
   }
 }
 
-function tokenizeBody(lines) {
+function tokenizeBody(lines, childIndent, state) {
   const tokens = [];
-  const depthByLine = new Map();
   let depth = 0;
+  let formula = null;
+  let continuationIndents = [childIndent];
+  let valid = true;
   for (const line of lines) {
-    depthByLine.set(line.line, depth);
     const result = tokenizeLine(line.text, line.line, depth);
+    if (depth === 0) {
+      const isFormula = result.tokens.length === 1 && result.tokens[0].type === 'formula';
+      const isDeduction = result.tokens[0]?.type === 'deduction';
+      if (line.indent < childIndent || (isDeduction && line.indent !== childIndent)) {
+        diagnostic(state, line, 'Formula starts and deduction operators must align with the rule body.');
+        valid = false;
+      } else if (line.indent > childIndent) {
+        if (!isFormula || formula === null) {
+          diagnostic(state, line, 'An indented continuation must follow an unbracketed formula.');
+          valid = false;
+        } else {
+          const previousIndent = continuationIndents.at(-1);
+          if (line.indent > previousIndent) {
+            continuationIndents.push(line.indent);
+          } else {
+            const level = continuationIndents.indexOf(line.indent);
+            if (level === -1) {
+              diagnostic(state, line, 'A continuation dedent must return to an established indentation level.');
+              valid = false;
+            } else {
+              continuationIndents.length = level + 1;
+            }
+          }
+          formula.value += `\n${' '.repeat(line.indent - childIndent)}${line.text}`;
+        }
+        depth = result.depth;
+        continue;
+      }
+      formula = isFormula ? result.tokens[0] : null;
+      continuationIndents = [childIndent];
+    } else {
+      // Bracket-internal layout keeps its existing semantics.
+      formula = null;
+    }
     tokens.push(...result.tokens);
     depth = result.depth;
   }
-  return { tokens, depthByLine };
+  return valid ? tokens : null;
 }
 
 function tokenizeLine(text, line, initialDepth) {
@@ -238,7 +273,11 @@ function tokenizeLine(text, line, initialDepth) {
     const hasSpaceBefore = /\s/.test(previous);
     const closeBoundary = /\s/.test(next) || next === '[' || next === ']';
 
-    if (character === '[' && (depth > 0 || index === 0 || hasSpaceBefore || previous === ']')) {
+    // A bracketed argument attached to formula punctuation, as in f(x, [y]),
+    // is literal text. Standalone and nested proof groups keep their boundaries.
+    const embeddedArgument = character === '[' && depth === 0 && buffer.trim() !== ''
+      && /^\[[^\[\]]*\][^\s\[\]]/.test(text.slice(index));
+    if (character === '[' && !embeddedArgument && (depth > 0 || index === 0 || hasSpaceBefore || previous === ']')) {
       flush();
       tokens.push({ type: 'open', line });
       depth += 1;
@@ -254,17 +293,6 @@ function tokenizeLine(text, line, initialDepth) {
   }
   flush();
   return { tokens, depth };
-}
-
-function validateBodyIndentation(lines, childIndent, depthByLine, state) {
-  let valid = true;
-  for (const line of lines) {
-    if (line.indent > childIndent && depthByLine.get(line.line) === 0) {
-      diagnostic(state, line, 'Unexpected indentation outside a bracketed derivation.');
-      valid = false;
-    }
-  }
-  return valid;
 }
 
 function parseInferenceTokens(tokens, state, fallbackLine) {

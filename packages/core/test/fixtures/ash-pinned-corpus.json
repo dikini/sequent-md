@@ -1,0 +1,186 @@
+{
+  "repository": "https://github.com/dikini/ash-lang",
+  "commit": "9ec5920e8c395f9a36125805ee93b7f58c0f4764",
+  "fences": [
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 121,
+      "source": "family kind-synthesis:\n  K-Primitive :=\n    primitive in {Int, Bool, Unit}\n    ===>\n    DELTA; OMEGA; XI |- primitive => Type\n\n  K-Variable :=\n    DELTA(variable) = kind\n    ===>\n    DELTA; OMEGA; XI |- variable => kind\n\n  K-Inference :=\n    OMEGA(inference) = kind\n    ===>\n    DELTA; OMEGA; XI |- inference => kind\n\n  K-Nominal :=\n    XI(nominal) = kind\n    ===>\n    DELTA; OMEGA; XI |- nominal => kind\n\n  K-Application :=\n    DELTA; OMEGA; XI |- function_type => argument_kind -> result_kind\n    DELTA; OMEGA; XI |- argument_type => argument_kind\n    ===>\n    DELTA; OMEGA; XI |- Apply(function_type, argument_type) => result_kind\n\n  K-Tuple :=\n    all_type(DELTA, OMEGA, XI, elements)\n    ===>\n    DELTA; OMEGA; XI |- Tuple(elements) => Type\n\n  K-Function :=\n    DELTA; OMEGA; XI |- domain => Type\n    DELTA; OMEGA; XI; PHI |- codomain computation ok\n    ===>\n    DELTA; OMEGA; XI |- Function(domain, codomain) => Type\n\n  K-Value-Type :=\n    DELTA; OMEGA; XI |- monotype => Type\n    ===>\n    DELTA; OMEGA; XI |- value monotype ok\n\n  K-Interface-Argument :=\n    IOTA(interface) = (parameters, determination)\n    length(arguments) = length(parameters)\n    for each corresponding (argument_i, parameter_i),\n      DELTA; OMEGA; XI |- argument_i => kind(parameter_i)\n    ===>\n    DELTA; OMEGA; XI; IOTA |- constraint Interface(arguments) ok"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 231,
+      "source": "family effect-row-formation:\n  WF-Effect-Instance :=\n    PHI(effect) = parameters, operations, visibility, provenance\n    length(arguments) = length(parameters)\n    for each corresponding (argument_i, parameter_i),\n      DELTA; OMEGA; XI |- argument_i => kind(parameter_i)\n    ===>\n    DELTA; OMEGA; XI; PHI |- effect<arguments> instance ok\n\n  WF-Closed-Effect-Row :=\n    for each member_i,\n      DELTA; OMEGA; XI; PHI |- member_i instance ok\n    distinct_exact(members)\n    ===>\n    DELTA; OMEGA; XI; PHI |- { members } row ok\n\n  WF-Open-Effect-Row :=\n    DELTA(row_variable) = EffectRow\n    for each member_i,\n      DELTA; OMEGA; XI; PHI |- member_i instance ok\n    distinct_exact(members)\n    members subset-of lacks(row_variable)\n    ===>\n    DELTA; OMEGA; XI; PHI |- { members | row_variable } row ok\n\n  WF-Computation :=\n    DELTA; OMEGA; XI |- value_type => Type\n    DELTA; OMEGA; XI; PHI |- effects row ok\n    ===>\n    DELTA; OMEGA; XI; PHI |- value_type ! effects computation ok"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 425,
+      "source": "family primitive-typing:\n  T-Int :=\n    ===>\n    GAMMA |- n ⇒ Int\n\n  T-Bool :=\n    ===>\n    GAMMA |- b ⇒ Bool\n\n  T-Unit :=\n    ===>\n    GAMMA |- () ⇒ Unit\n\n  T-Variable :=\n    x : scheme in GAMMA\n    instantiate(scheme) = type, obligations\n    record_pending(occurrence(x), obligations)\n    ===>\n    GAMMA |- x ⇒ type\n\n  T-Check-Inferred :=\n    GAMMA |- expression ⇒ type_1\n    type_1 = type_2\n    ===>\n    GAMMA |- expression ⇐ type_2"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 472,
+      "source": "family data-typing:\n  T-Tuple :=\n    for each i, GAMMA |- element_i ⇒ type_i\n    n >= 2\n    ===>\n    GAMMA |- (element_1, ..., element_n) ⇒ Tuple(type_1, ..., type_n)\n\n  T-Nullary-Constructor :=\n    constructor : forall parameters. Constructor(owner<parameters>, none)\n    instantiate(parameters, owner<parameters>) = owner<arguments>\n    ===>\n    GAMMA |- constructor ⇒ owner<arguments>\n\n  T-Payload-Constructor :=\n    constructor : forall parameters. Constructor(owner<parameters>, payload)\n    instantiate(parameters, Function(payload, owner<parameters>)) = constructor_type\n    ===>\n    GAMMA |- constructor ⇒ constructor_type\n\n  T-Newtype-Constructor :=\n    constructor : forall parameters. Newtype(owner<parameters>, representation)\n    instantiate(parameters, Function(representation, owner<parameters>))\n      = constructor_type\n    ===>\n    GAMMA |- constructor ⇒ constructor_type"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 513,
+      "source": "family function-typing:\n  T-Effectful-Function-Check :=\n    pattern ⇐ domain => bindings\n    exhaustive([pattern], domain)\n    GAMMA, bindings |- body ⇐ codomain ! body_effects\n    ===>\n    GAMMA |- fn(pattern) { body }\n      ⇐ Function(domain, codomain ! body_effects) ! {}\n\n  T-Effectful-Apply :=\n    GAMMA |- function\n      ⇒ Function(domain, codomain ! call_effects) ! function_effects\n    GAMMA |- argument ⇐ domain ! argument_effects\n    result_effects\n      = function_effects union argument_effects union call_effects\n    ===>\n    GAMMA |- function argument ⇒ codomain ! result_effects"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 582,
+      "source": "family match-typing:\n  T-Match-Synthesize :=\n    GAMMA |- scrutinee ⇒ input_type\n    for each i, pattern_i ⇐ input_type => bindings_i\n    for each i, useful(previous_patterns_i, pattern_i, input_type)\n    GAMMA, bindings_1 |- body_1 ⇒ result_type\n    for each i > 1, GAMMA, bindings_i |- body_i ⇐ result_type\n    exhaustive(all_patterns, input_type)\n    ===>\n    GAMMA |- match scrutinee { arms } ⇒ result_type\n\n  T-Match-Check :=\n    GAMMA |- scrutinee ⇒ input_type\n    for each i, pattern_i ⇐ input_type => bindings_i\n    for each i, useful(previous_patterns_i, pattern_i, input_type)\n    for each i, GAMMA, bindings_i |- body_i ⇐ expected_type\n    exhaustive(all_patterns, input_type)\n    ===>\n    GAMMA |- match scrutinee { arms } ⇐ expected_type"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 653,
+      "source": "family block-typing:\n  T-Block-Result :=\n    GAMMA |- result ⇒ result_type\n    ===>\n    GAMMA |- { result } ⇒ result_type\n\n  T-Block-Let-Inferred :=\n    GAMMA |- initializer ⇒ binding_type\n    pattern ⇐ binding_type => bindings\n    exhaustive([pattern], binding_type)\n    generalize_local(GAMMA, pattern, initializer, binding_type, bindings) = remainder_bindings\n    GAMMA, remainder_bindings |- { remainder } ⇒ result_type\n    ===>\n    GAMMA |- { let pattern = initializer; remainder } ⇒ result_type\n\n  T-Block-Let-Checked :=\n    GAMMA |- initializer ⇐ binding_type\n    pattern ⇐ binding_type => bindings\n    exhaustive([pattern], binding_type)\n    GAMMA, bindings |- { remainder } ⇒ result_type\n    ===>\n    GAMMA |- { let pattern : binding_type = initializer; remainder } ⇒ result_type\n\n  T-Block-Check-Result :=\n    GAMMA |- result ⇐ expected_type\n    ===>\n    GAMMA |- { result } ⇐ expected_type\n\n  T-Block-Check-Let-Inferred :=\n    GAMMA |- initializer ⇒ binding_type\n    pattern ⇐ binding_type => bindings\n    exhaustive([pattern], binding_type)\n    generalize_local(GAMMA, pattern, initializer, binding_type, bindings) = remainder_bindings\n    GAMMA, remainder_bindings |- { remainder } ⇐ expected_type\n    ===>\n    GAMMA |- { let pattern = initializer; remainder } ⇐ expected_type\n\n  T-Block-Check-Let-Annotated :=\n    GAMMA |- initializer ⇐ binding_type\n    pattern ⇐ binding_type => bindings\n    exhaustive([pattern], binding_type)\n    GAMMA, bindings |- { remainder } ⇐ expected_type\n    ===>\n    GAMMA |- { let pattern : binding_type = initializer; remainder } ⇐ expected_type"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 773,
+      "source": "family local-newtype-typing:\n  T-Block-Newtype-Inferred :=\n    n(P) = R is resolved and kind-correct\n    GAMMA; XI, n(P) = R |- { remainder } ⇒ A ! epsilon\n    n does not occur in outward(GAMMA, A ! epsilon)\n    ===>\n    GAMMA; XI |- { newtype n(P) = R; remainder } ⇒ A ! epsilon\n\n  T-Block-Newtype-Checked :=\n    n(P) = R is resolved and kind-correct\n    GAMMA; XI, n(P) = R |- { remainder } ⇐ A ! epsilon\n    n does not occur in outward(GAMMA, A ! epsilon)\n    ===>\n    GAMMA; XI |- { newtype n(P) = R; remainder } ⇐ A ! epsilon"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 906,
+      "source": "family recursive-binding-typing:\n  T-Block-Let-Rec-Synthesize :=\n    GAMMA_R = { x_i : type_i | 1 <= i <= n }\n    for each i, safe_rec(initializer_i)\n    for each i, GAMMA, GAMMA_R |- initializer_i ⇐ type_i\n    GAMMA, GAMMA_R |- { remainder } ⇒ result_type\n    ===>\n    GAMMA |- { let rec group; remainder } ⇒ result_type\n\n  T-Block-Let-Rec-Check :=\n    GAMMA_R = { x_i : type_i | 1 <= i <= n }\n    for each i, safe_rec(initializer_i)\n    for each i, GAMMA, GAMMA_R |- initializer_i ⇐ type_i\n    GAMMA, GAMMA_R |- { remainder } ⇐ expected_type\n    ===>\n    GAMMA |- { let rec group; remainder } ⇐ expected_type"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 948,
+      "source": "family primitive-operation-typing:\n  T-Add :=\n    GAMMA |- left ⇐ Int\n    GAMMA |- right ⇐ Int\n    ===>\n    GAMMA |- left + right ⇒ Int\n\n  T-Multiply :=\n    GAMMA |- left ⇐ Int\n    GAMMA |- right ⇐ Int\n    ===>\n    GAMMA |- left * right ⇒ Int\n\n  T-Integer-Equal :=\n    GAMMA |- left ⇐ Int\n    GAMMA |- right ⇐ Int\n    ===>\n    GAMMA |- left == right ⇒ Bool"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1001,
+      "source": "T-Perform :=\n  operation_type(E<arguments>.op) = parameter -> result\n  GAMMA |- operand ⇐ parameter ! operand_effects\n  request_effects = operand_effects union { E<arguments> }\n  ===>\n  GAMMA |- perform E<arguments>.op operand ⇒ result ! request_effects"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1027,
+      "source": "T-Handle :=\n  GAMMA |- body ⇒ A ! ({ E<arguments> } union rho)\n  clauses cover each operation of E exactly once\n  for each op_i : P_i -> Q_i,\n    GAMMA, bindings(pattern_i : P_i);\n      resume(Q_i, A, epsilon_out)\n      |- clause_i ⇐ A ! epsilon_out, consumes-capability-once\n  rho subset-of epsilon_out\n  ===>\n  GAMMA |- handle body with E<arguments> { clauses }\n    ⇒ A ! epsilon_out\n\nT-Resume :=\n  active-resume = resume(Q, A, epsilon_out)\n  GAMMA |- value ⇐ Q ! value_effects\n  value_effects subset-of epsilon_out\n  ===>\n  GAMMA; active-resume |- resume value\n    ⇒ A ! epsilon_out, consumes-resume\n\nT-Discard :=\n  active-resume = resume(Q, A, epsilon_out)\n  active-resume is available\n  owned closure includes the selected capture and its contained live captures\n  closing that closure preserves every outside and running completion owner\n  each action is compatible with its surviving interpreter context\n  epsilon_close is the least residual row of owned close execution\n  ===>\n  GAMMA; active-resume |- discard ⇒ Unit ! epsilon_close, consumes-resume"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1187,
+      "source": "family hook-scope-typing:\n  T-Hook :=\n    H is a well-kinded exact hook instance with payload P\n    GAMMA |- body ⇒ A ! epsilon_body\n    epsilon_out = scope_discharge(epsilon_body, H)\n    stored dependencies and control completion are safe across the scope\n    ===>\n    GAMMA |- hook H { body } ⇒ A ! epsilon_out\n\n  T-Register :=\n    H is a well-kinded exact hook instance with payload P\n    GAMMA |- transformer ⇐ (P -> P ! epsilon_callback) ! epsilon_init\n    GAMMA |- body ⇒ A ! epsilon_body\n    rho = scope_discharge(epsilon_body, H)\n    epsilon_out = epsilon_init union rho union epsilon_callback union { H }\n    stored dependencies and control completion are safe across the registration\n    ===>\n    GAMMA |- register H transformer { body } ⇒ A ! epsilon_out"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1472,
+      "source": "family interface-well-formedness:\n  WF-Interface-Method :=\n    method_parameters = ordered declared parameters of method\n    DELTA = kinds(interface_parameters) union kinds(method_parameters)\n    DELTA; empty_OMEGA; XI |- method_value_type => Type\n    free_type_variables(method_value_type) - set(interface_parameters)\n      = set(method_parameters)\n    required_parameters =\n      if determination is absent then interface_parameters\n      else parameters_at(determination.determinant_positions)\n    every required_parameter occurs in method_value_type\n    method_value_type = domain -> codomain\n    ===>\n    interface<interface_parameters> determination\n      |-method method_name<method_parameters> : method_value_type ok\n\n  WF-Interface :=\n    IOTA(interface) = (interface_parameters, determination)\n    interface_parameters is nonempty\n    determination is absent or a total ordered partition of interface_parameters\n    methods is nonempty\n    for each method,\n      interface<interface_parameters> determination |-method method ok\n    ===>\n    |-interface visibility interface<interface_parameters> determination\n      { methods } ok"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1516,
+      "source": "T-Method-Occurrence :=\n  MU(method_id) =\n    interface_id, interface_parameters, determination,\n    method_parameters, method_value_type\n  freshen(interface_parameters) = interface_arguments\n  freshen(method_parameters) = method_arguments\n  type = simultaneous_substitute(\n    interface_parameters ++ method_parameters,\n    interface_arguments ++ method_arguments,\n    method_value_type)\n  obligation = interface_id<interface_arguments>\n  record_pending(occurrence(method_id), method_arguments, type, [obligation])\n  ===>\n  GAMMA; MU |- method_id ⇒ type"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1575,
+      "source": "WF-Global-Signature :=\n  parameters = bind_signature_parameters(explicit_binders, value_type, requirements)\n  DELTA = kinds(parameters)\n  DELTA; empty_OMEGA; XI |- value value_type ok\n  for each requirement, requirement is a resolved interface application\n  for each requirement, DELTA; empty_OMEGA; XI; IOTA |- requirement ok\n  requirements have no duplicate complete applications\n  determined requirements for the same InterfaceId have no equal-key,\n    unequal-dependent pair\n  for each requirement,\n    free_type_variables(requirement_key(requirement))\n      is a subset of free_type_variables(value_type)\n  visibility = public implies every required interface is public\n  checked_scheme = ConstrainedScheme(parameters, requirements, value_type)\n  ===>\n  module |-signature visibility name : value_type where requirements ⇒ checked_scheme"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1667,
+      "source": "WF-Implementation-Header :=\n  parameters = bind_head_parameters(explicit_binders, head_arguments)\n  DELTA = kinds(parameters)\n  DELTA; empty_OMEGA; XI; IOTA |- constraint interface(head_arguments) ok\n  for each prerequisite,\n    DELTA; empty_OMEGA; XI; IOTA |- prerequisite ok\n  prerequisites have no duplicate complete applications\n  determined prerequisites for the same InterfaceId have no equal-key,\n    unequal-dependent pair\n  selection_key(head) is not an all-bare-variable tuple\n  free_type_variables(prerequisites) is a subset of free_type_variables(head)\n  free_type_variables(dependent_slice(head))\n    is a subset of free_type_variables(selection_key(head))\n  module = owner(interface)\n    or module owns an outer nominal of selection_key(head)\n  for each non-ground prerequisite,\n    decreases(selection_key(prerequisite), selection_key(head))\n  visibility = public implies interface and prerequisite interfaces are public\n  checked_header = ImplementationHeader(\n    visibility, parameters, interface, head_arguments, prerequisites)\n  ===>\n  module |-impl visibility interface<head_arguments> where prerequisites\n    ⇒ checked_header"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1729,
+      "source": "family implementation-method-checking:\n  WF-Implementation-Membership :=\n    declared_methods(interface) = required_methods\n    grouped_methods(body) contains every required method exactly once\n    grouped_methods(body) contains no method outside required_methods\n    ===>\n    |-impl-membership interface<head_arguments> { body } ok\n\n  T-Implementation-Method :=\n    method<method_parameters> : method_value_type in declared_methods(interface)\n    expected = simultaneous_substitute(\n      interface_parameters, head_arguments, method_value_type)\n    head_parameters = ordered rigid parameters of head_arguments\n    current = the exact current implementation header and identity\n    abstracts = ordered abstract evidence for current.prerequisites\n    head_parameters followed by method_parameters is the checked scheme order\n    head_parameters are rigid while checking the method\n    method_parameters are rigid while checking the method\n    GAMMA; abstracts; current; effective\n      |-equations grouped_methods(body, method) ⇐ expected, obligations\n    close_and_select(abstracts, current, effective, empty_active, obligations)\n      = selections\n    ===>\n    GAMMA; effective |-impl-method grouped_methods(body, method)\n      ⇐ expected, selections"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1807,
+      "source": "WF-Effective-Implementations :=\n  local = admitted_local_impls(module)\n  selected = selected_public_impls(implementation_items(module), dependency_summaries)\n  effective = local union selected\n  effective is deduplicated by stable implementation identity\n  for each distinct pair for one interface,\n    not unifies(freshen(selection_key(left)), freshen(selection_key(right)))\n  ===>\n  module |-implementations effective coherent"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 1974,
+      "source": "family evidence-selection:\n  Select-Abstract :=\n    goal contains no inference variable\n    requirement = identity_equal_complete_requirement(abstracts, goal)\n    ===>\n    abstracts; current; lexical; effective; active |- goal\n      ⇓ Abstract(requirement, interface_methods(goal.interface))\n\n  Select-Current-Implementation :=\n    goal contains no inference variable\n    no identity-equal complete abstract requirement exists\n    current has the same interface and exact rigid complete head as goal\n    ===>\n    abstracts; current; lexical; effective; active |- goal\n      ⇓ Implementation(current, identity, abstract_prerequisites, impl_methods(current))\n\n  Select-Lexical :=\n    goal contains no inference variable\n    earlier_source_absent(abstracts, current, goal)\n    source = identity_equal_complete_source(lexical, goal)\n    ===>\n    abstracts; current; lexical; effective; active |- goal\n      ⇓ Lexical(source, interface_methods(goal.interface))\n\n  Select-Concrete-Implementation :=\n    goal contains no inference variable\n    earlier_source_absent(abstracts, current, lexical, goal)\n    goal is not in active\n    unique_kind_preserving_match(effective excluding current, goal)\n      = implementation, substitution\n    prerequisite_goals = substitute(substitution, implementation.prerequisites)\n    select_all(abstracts, current, lexical, effective, active union {goal}, prerequisite_goals)\n      = evidence\n    ===>\n    abstracts; current; lexical; effective; active |- goal\n      ⇓ Implementation(implementation, substitution, evidence, impl_methods(implementation))"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 2161,
+      "source": "family global-typing:\n  T-Equational-Clause :=\n    patterns ⇐ domains => bindings\n    useful(previous_clauses, patterns, domains)\n    GAMMA, bindings; abstracts; current; effective\n      |- body ⇐ codomain ! effects, obligations\n    ===>\n    GAMMA; abstracts; current; effective |-clause name patterns = body\n      ⇐ Function(domains, codomain ! effects), obligations\n\n  T-Equational-Global :=\n    checked_signature = forall parameters. requirements => definition_type\n    definition_type = Function(domains, codomain ! effects)\n    abstracts = ordered abstract evidence for requirements\n    current = none\n    effective = module's effective implementation environment\n    parameters are rigid while checking clauses\n    for each clause_i in source order,\n      GAMMA; abstracts; current; effective\n        |-clause clause_i ⇐ definition_type, obligations_i\n    obligations = concatenate(obligations_i in source order)\n    exhaustive(clauses, domains)\n    close_and_select(abstracts, current, effective, empty_active, obligations)\n      = selections\n    ===>\n    GAMMA; effective |-definition signature; clauses\n      ⇒ name : checked_signature, selections\n\n  T-Operational-Global :=\n    checked_signature\n      = forall parameters. requirements => Function(domain, codomain ! effects)\n    definition\n      = fn name(header_pattern : domain) -> codomain ! effects where requirements { body }\n    abstracts = ordered abstract evidence for requirements\n    current = none\n    effective = module's effective implementation environment\n    parameters are rigid while checking the header and body\n    header_pattern ⇐ domain => bindings\n    exhaustive([header_pattern], domain)\n    GAMMA, bindings; abstracts; current; effective\n      |- body ⇐ codomain ! effects, obligations\n    close_and_select(abstracts, current, effective, empty_active, obligations)\n      = selections\n    ===>\n    GAMMA; effective |-definition definition\n      ⇒ name : checked_signature, selections"
+    },
+    {
+      "path": "spec/static-semantics.md",
+      "fenceLine": 2262,
+      "source": "family module-and-program-typing:\n  T-Module :=\n    imported kinded facts authenticate from direct dependency summaries\n    allocate all local nominal and declaration-parameter identities\n    XI = imported nominal kinds plus derived local nominal kinds\n    PHI = authenticated imported effects plus pre-frozen local effect headers\n    IOTA = imported interface parameter vectors and determinant positions\n      plus pre-frozen local interface parameter vectors and determinant positions\n    for each module-level constructor payload and newtype representation in combined order,\n      DELTA; empty_OMEGA; XI |- value type ok\n    the module-level newtype-only representation graph is acyclic\n    local-newtype representations pass resolved body-annotation kind checks in lexical scope\n    GAMMA_D = checked kinded schemes imported from direct dependency summaries\n    each local effect completes the declaration checks above\n    for each local interface, |-interface interface ok\n    admitted_impls = admitted local implementation headers\n    selected_impls = explicitly selected implementation facts from dependency summaries\n    effective_impls = effective(admitted_impls, selected_impls)\n    module |-implementations effective_impls coherent\n    for each local implementation, |-impl-membership implementation ok\n    GAMMA_G = all local schemes accepted by WF-Global-Signature\n    GAMMA_M = checked schemes for all local implementation methods\n    for each ordinary global or implementation method in deterministic source and method order,\n      GAMMA_D, GAMMA_G, GAMMA_M |-body definition ok\n    every inference variable allocated by these premises is in domain(THETA)\n    checked_definitions\n      = freeze_occurrence_evidence(body-checked definitions, apply(THETA))\n    freeze_module_and_public(module, checked_definitions, admitted_impls,\n      staged public name and implementation re-exports, apply(THETA))\n      = checked_module, summary\n    ===>\n    summaries(direct_dependencies) |-module module ⇒ checked_module, summary\n\n  T-Program :=\n    modules are in dependency order\n    for each module_i,\n      summaries(direct_dependencies_i) |-module module_i ⇒ checked_module_i, summary_i\n    checked_program = checked_modules in dependency order\n    main is a local checked scheme in entry\n    main is monomorphic Function(Unit, result_type ! {}) with no requirements\n    closed(result_type)\n    ===>\n    |-program checked_program, entry ⇒ result_type"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 39,
+      "source": "E-Program-Start :=\n  elaborate(modules, entry) = linked_program\n  validate(linked_program) = success\n  ===>\n  INITIAL(modules, entry) = CONFIG(empty_heap, empty_environment, linked_program, empty_continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 61,
+      "source": "family type-erasure-steps:\n  E-Type-Abstraction :=\n    execution uses Pure Core\n    ===>\n    CONFIG(heap, environment, TypeAbstraction(parameters, body), continuation) -> CONFIG(heap, environment, body, continuation)\n\n  E-Type-Application :=\n    execution uses Pure Core\n    ===>\n    CONFIG(heap, environment, TypeApplication(function, arguments), continuation) -> CONFIG(heap, environment, function, continuation)\n\n  E-Newtype-Conversion :=\n    ===>\n    CONFIG(heap, environment, NewtypeConversion(owner, direction, child), continuation) -> CONFIG(heap, environment, child, continuation)\n\n  E-Local-Nominal-Scope :=\n    ===>\n    CONFIG(heap, environment, LocalNominalScope(owner, body), continuation) -> CONFIG(heap, environment, body, continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 128,
+      "source": "family effect-type-steps:\n  E-Effect-Type-Abstraction :=\n    execution uses Effect Core\n    ===>\n    CONFIG(heap, environment, TypeAbstraction(parameters, body), continuation) -> CONFIG(heap, environment, POLYMORPHIC(parameters, body, environment), continuation)\n\n  E-Effect-Type-Application :=\n    execution uses Effect Core\n    ===>\n    CONFIG(heap, environment, TypeApplication(function, arguments), continuation) -> CONFIG(heap, environment, function, TYPE-ARGUMENTS(arguments, instantiation(environment)) :: continuation)\n\n  E-Effect-Type-Instantiate :=\n    instantiated = instantiate_arguments(arguments, caller_instantiation)\n    body_environment = bind_parameters(definition_environment, parameters, instantiated)\n    ===>\n    CONFIG(heap, environment_value, POLYMORPHIC(parameters, body, definition_environment), TYPE-ARGUMENTS(arguments, caller_instantiation) :: continuation) -> CONFIG(heap, body_environment, body, continuation)\n\n  E-Effect-Constructor-Instantiate :=\n    constructor_value(value)\n    ===>\n    CONFIG(heap, environment_value, value, TYPE-ARGUMENTS(arguments, caller_instantiation) :: continuation) -> CONFIG(heap, environment_value, value, continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 257,
+      "source": "family binding-steps:\n  E-Let-Enter :=\n    ===>\n    CONFIG(heap, environment, let pattern = initializer; body, continuation) -> CONFIG(heap, environment, initializer, LET(pattern, body, environment) :: continuation)\n\n  E-Let-Continue :=\n    match(heap, value, pattern) = bindings\n    environment' = extend(environment, bindings)\n    ===>\n    CONFIG(heap, environment_value, value, LET(pattern, body, environment) :: continuation) -> CONFIG(heap, environment', body, continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 284,
+      "source": "family recursive-binding-steps:\n  E-Let-Rec-Allocate :=\n    allocate_uninitialized(heap, data_members) = heap_1, data_bindings, pending\n    environment_1 = extend_recursive(environment, function_templates, data_bindings)\n    ===>\n    CONFIG(heap, environment, let rec members; body, continuation) -> CONFIG(heap_1, environment_1, initialize(pending, body), continuation)\n\n  E-Let-Rec-Initialize :=\n    ===>\n    CONFIG(heap, recursive_environment, initialize((initializer, member_location) :: rest, body), continuation) -> CONFIG(heap, recursive_environment, initializer, INITIALIZE_MEMBER(member_location, rest, body, recursive_environment) :: continuation)\n\n  E-Let-Rec-Store :=\n    heap_1 = store_alias(heap, member_location, value_location)\n    ===>\n    CONFIG(heap, environment_value, value_location, INITIALIZE_MEMBER(member_location, rest, body, recursive_environment) :: continuation) -> CONFIG(heap_1, recursive_environment, initialize(rest, body), continuation)\n\n  E-Let-Rec-Body :=\n    ===>\n    CONFIG(heap, recursive_environment, initialize(empty, body), continuation) -> CONFIG(heap, recursive_environment, body, continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 358,
+      "source": "family application-steps:\n  E-Apply-Function :=\n    ===>\n    CONFIG(heap, environment, function argument, continuation) -> CONFIG(heap, environment, function, APPLY_FUNCTION(argument, environment) :: continuation)\n\n  E-Apply-Argument :=\n    ===>\n    CONFIG(heap, environment_value, function_value, APPLY_FUNCTION(argument, environment) :: continuation) -> CONFIG(heap, environment, argument, APPLY_ARGUMENT(function_value) :: continuation)\n\n  E-Beta :=\n    function_value = closure(pattern, body, captured_environment)\n    match(heap, argument_value, pattern) = bindings\n    body_environment = extend(captured_environment, bindings)\n    ===>\n    CONFIG(heap, environment, argument_value, APPLY_ARGUMENT(function_value) :: continuation) -> CONFIG(heap, body_environment, body, continuation)\n\n  E-Constructor-Apply :=\n    function_value = constructor_function(constructor)\n    heap_1, result_location = allocate(heap, constructor(constructor, argument_value))\n    ===>\n    CONFIG(heap, environment, argument_value, APPLY_ARGUMENT(function_value) :: continuation) -> CONFIG(heap_1, environment, result_location, continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 406,
+      "source": "family match-steps:\n  E-Match-Enter :=\n    ===>\n    CONFIG(heap, environment, match scrutinee { arms }, continuation) -> CONFIG(heap, environment, scrutinee, MATCH(arms, environment) :: continuation)\n\n  E-Match-Select :=\n    first_match(heap, scrutinee_value, arms) = pattern, body, bindings\n    arm_environment = extend(environment, bindings)\n    ===>\n    CONFIG(heap, environment_value, scrutinee_value, MATCH(arms, environment) :: continuation) -> CONFIG(heap, arm_environment, body, continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 430,
+      "source": "family primitive-operation-steps:\n  E-Add-Left :=\n    left -> left'\n    ===>\n    left + right -> left' + right\n\n  E-Add-Right :=\n    right -> right'\n    ===>\n    n + right -> n + right'\n\n  E-Add-Values :=\n    n_3 is the mathematical sum of n_1 and n_2\n    ===>\n    n_1 + n_2 -> n_3\n\n  E-Multiply-Left :=\n    left -> left'\n    ===>\n    left * right -> left' * right\n\n  E-Multiply-Right :=\n    right -> right'\n    ===>\n    n * right -> n * right'\n\n  E-Multiply-Values :=\n    n_3 is the mathematical product of n_1 and n_2\n    ===>\n    n_1 * n_2 -> n_3\n\n  E-Equal-Left :=\n    left -> left'\n    ===>\n    left == right -> left' == right\n\n  E-Equal-Right :=\n    right -> right'\n    ===>\n    n == right -> n == right'\n\n  E-Equal-Values :=\n    b is true exactly when n_1 and n_2 are the same integer\n    ===>\n    n_1 == n_2 -> b"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 497,
+      "source": "family handler-boundary-steps:\n  E-Handle-Enter :=\n    ===>\n    CONFIG(heap, environment, handle body with instance { clauses }, continuation) -> CONFIG(heap, environment, body, HANDLER(handler, instance, clauses, environment) :: continuation)\n\n  E-Handle-Return :=\n    ===>\n    CONFIG(heap, environment_value, value, HANDLER(handler, instance, clauses, handler_environment) :: continuation) -> CONFIG(heap, environment_value, value, continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 522,
+      "source": "family request-steps:\n  E-Perform-Operand :=\n    ===>\n    CONFIG(heap, environment, perform operation operand, continuation) -> CONFIG(heap, environment, operand, REQUEST(operation, instantiation(environment)) :: continuation)\n\n  E-Request-Select :=\n    requested = instantiate(instance(operation), request_instantiation)\n    select_nearest(continuation, requested) = clause, handler_environment, handler, owner, captured, outer\n    no nearer cell boundary accepts requested\n    clause = operation pattern => body\n    match(heap, operand_value, pattern) = bindings\n    clause_environment = extend(handler_environment, bindings)\n    ===>\n    CONFIG(heap, environment_value, operand_value, REQUEST(operation, request_instantiation) :: continuation) -> CONFIG(heap, clause_environment, body, CLAUSE(handler, owner, live(captured)) :: outer)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 550,
+      "source": "family resume-steps:\n  E-Resume-Operand :=\n    nearest_clause_owner(continuation, handler, owner) = live(captured)\n    ===>\n    CONFIG(heap, environment, resume(handler, owner, expression), continuation) -> CONFIG(heap, environment, expression, RESUME(handler, owner) :: continuation)\n\n  E-Resume-Restore :=\n    continuation = RESUME(handler, owner) :: clause_control\n    split_owner(clause_control, handler, owner) = clause_prefix, live(captured), outer\n    restored = restore(captured, clause_prefix ++ CLAUSE(handler, owner, consumed) :: outer)\n    ===>\n    CONFIG(heap, environment_value, value, continuation) -> CONFIG(heap, environment_value, value, restored)\n\n  E-Clause-Return :=\n    ===>\n    CONFIG(heap, environment_value, value, CLAUSE(handler, owner, consumed) :: outer) -> CONFIG(heap, environment_value, value, outer)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 583,
+      "source": "E-Discard :=\n  split_owner(continuation, handler, owner) = clause_prefix, live(captured), outer\n  closing = owned_close_control(captured)\n  ownership validation and fallible initial preparation succeed\n  remaining = clause_prefix ++ CLAUSE(handler, owner, consumed) :: outer\n  ===>\n  CONFIG(heap, environment, discard(handler, owner), continuation) -> CONFIG(heap, environment, (), closing ++ CLOSE :: remaining)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 646,
+      "source": "family resource-boundary-steps:\n  E-Resource-Initialize :=\n    ===>\n    CONFIG(heap, environment, resource cell<R> c = initializer { body }, continuation) -> CONFIG(heap, environment, initializer, RESOURCE_INIT(R, c, body, environment) :: continuation)\n\n  E-Resource-Acquire :=\n    n is an integer\n    acquisition preparation succeeds with fresh activation a\n    bind_cell(heap, resource_environment, R, c, a) = heap_1, body_environment\n    ===>\n    CONFIG(heap, environment_value, n, RESOURCE_INIT(R, c, body, resource_environment) :: continuation) -> CONFIG(heap_1, body_environment, body, CELL(a, n) :: continuation)\n\n  E-Resource-Return :=\n    ===>\n    CONFIG(heap, environment_value, value, CELL(a, n) :: continuation) -> CONFIG(heap, environment_value, value, continuation)"
+    },
+    {
+      "path": "spec/dynamic-semantics.md",
+      "fenceLine": 949,
+      "source": "family derived-multi-step:\n  E-Multi-Refl :=\n    ===>\n    configuration ->* configuration\n\n  E-Multi-Step :=\n    configuration_1 -> configuration_2\n    configuration_2 ->* configuration_3\n    ===>\n    configuration_1 ->* configuration_3"
+    }
+  ]
+}
