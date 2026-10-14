@@ -105,6 +105,29 @@ Pass a `symbols` map to the core renderer or rehype plugin to add aliases or
 override the defaults. Custom entries are merged with the built-in logical,
 Greek, modal, temporal, and linear-logic vocabulary.
 
+Uppercase environment aliases include `OMEGA` → Ω, `XI` → Ξ, `IOTA` → Ι,
+`PHI` → Φ, and `MU` → Μ. They are case-sensitive and use whole-word matching:
+`OMEGA_value` and `prefixOMEGA` remain literal identifiers.
+
+```sequent
+Environment-Notation :=
+    ===>
+    GAMMA; DELTA; OMEGA; XI; IOTA; PHI; MU |- expression ⇒ type
+```
+
+The conclusion displays `Γ; Δ; Ω; Ξ; Ι; Φ; Μ ⊢ expression ⇒ type` with defaults,
+including in VS Code preview and native SVG export. The explicit mapping below
+also works, although these five entries are already defaults:
+
+```js
+render(source, {symbols: {
+  OMEGA: 'Ω', XI: 'Ξ', IOTA: 'Ι', PHI: 'Φ', MU: 'Μ'
+}});
+```
+
+Caller entries take precedence: `{symbols: {OMEGA: 'ω'}}` changes that alias to
+lowercase ω while retaining the other defaults.
+
 ```js
 const symbols = {
   judgement: '⊨',

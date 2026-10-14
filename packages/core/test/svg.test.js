@@ -406,3 +406,29 @@ test('unequal-height siblings in the same row align their bottom edges', async (
   assert.notEqual(premises[0].height, premises[1].height);
   assert.equal(premises[0].y + premises[0].height, premises[1].y + premises[1].height);
 });
+
+test('uppercase Greek SVG defaults and overrides match literal Unicode outlines', async () => {
+  const source = 'Environment-Notation :=\n    ===>\n    GAMMA; DELTA; OMEGA; XI; IOTA; PHI; MU |- expression ⇒ type';
+  const expected = 'Γ; Δ; Ω; Ξ; Ι; Φ; Μ ⊢ expression ⇒ type';
+  function outlines(svg) {
+    const nodes = xml(svg).nodes;
+    const paths = new Map(nodes.filter((node) => node.local === 'path')
+      .map((node) => [node.attributes.id.value, node.attributes.d.value]));
+    return nodes.filter((node) => ['use', 'line'].includes(node.local))
+      .map((node) => ({ name: node.local, attributes: Object.fromEntries(
+        Object.entries(node.attributes).map(([name, attr]) =>
+          [name, name === 'href' ? paths.get(attr.value.slice(1)) : attr.value])) }));
+  }
+  for (const symbols of [undefined, { OMEGA: 'ω' }]) {
+    const opts = { maxWidth: 640, symbols };
+    const text = symbols ? expected.replace('Ω', 'ω') : expected;
+    const scene = await layout(source, opts);
+    assert.deepEqual(scene.texts.filter((t) => t.role === 'formula').map((t) => t.text), [text]);
+    const actual = await renderSvg(source, opts);
+    const literal = await renderSvg('Environment-Notation :=\n    ===>\n    ' + text, { maxWidth: 640 });
+    assertPortable(actual);
+    assert.deepEqual(outlines(actual.svg), outlines(literal.svg));
+    assert.ok(xml(actual.svg).text.includes(source));
+    assert.equal(actual.tree.children[0].conclusion.value, 'GAMMA; DELTA; OMEGA; XI; IOTA; PHI; MU |- expression ⇒ type');
+  }
+});

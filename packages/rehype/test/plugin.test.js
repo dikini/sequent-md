@@ -6,12 +6,12 @@ import { rehypeSequent } from '../src/index.js';
 
 const continuation = await readFile(new URL('../../core/test/fixtures/sequent-continuation.sequent', import.meta.url), 'utf8');
 
-function transformFence(source) {
+function transformFence(source, options) {
   const tree = { type: 'root', children: [{ type: 'element', tagName: 'pre', properties: {}, children: [{
     type: 'element', tagName: 'code', properties: { className: ['language-sequent'] },
     children: [{ type: 'text', value: source }]
   }] }] };
-  rehypeSequent()(tree);
+  rehypeSequent(options)(tree);
   return tree.children[0];
 }
 
@@ -22,7 +22,7 @@ test('keeps a continued judgment inside one premise in rehype', () => {
   assert.deepEqual(premises.properties.className, ['sequent-premises']);
   assert.equal(premises.children.length, 1);
   assert.equal(premises.children[0].children[0].value,
-    'for each corresponding (argument_i, parameter_i),\n  Δ; OMEGA; XI ⊢ argument_i => kind(parameter_i)');
+    'for each corresponding (argument_i, parameter_i),\n  Δ; Ω; Ξ ⊢ argument_i => kind(parameter_i)');
 });
 
 test('retains complete invalid continuation source in rehype', () => {
@@ -111,3 +111,13 @@ test('renders a zero-premise rule as an axiom proof', () => {
   assert.equal(proof.children[0].tagName, 'figure');
   assert.equal(proof.children[0].children[1].children[0].properties.className[0], 'sequent-bar');
 });
+
+for (const [name, options] of [['defaults', {}], ['explicit mapping', { symbols: { OMEGA: 'Ω', XI: 'Ξ', IOTA: 'Ι', PHI: 'Φ', MU: 'Μ' } }]]) {
+  test(`renders uppercase Greek environments in rehype with ${name}`, () => {
+    const source = 'Environment-Notation :=\n    ===>\n    GAMMA; DELTA; OMEGA; XI; IOTA; PHI; MU |- expression ⇒ type';
+    const document = transformFence(source, options);
+    const formula = document.children[0].children[0].children[2].children[0];
+    assert.deepEqual(formula.properties.className, ['sequent-formula']);
+    assert.equal(formula.children[0].value, 'Γ; Δ; Ω; Ξ; Ι; Φ; Μ ⊢ expression ⇒ type');
+  });
+}
