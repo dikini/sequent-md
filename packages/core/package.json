@@ -2,5 +2,19 @@
   "name": "@sequent-md/core",
   "version": "0.1.0",
   "type": "module",
-  "exports": "./src/index.js"
+  "exports": {
+    ".": "./src/index.js",
+    "./svg": {
+      "node": "./src/svg.js"
+    }
+  },
+  "dependencies": {
+    "bidi-js": "1.0.3",
+    "fontkit": "2.0.4",
+    "unicode-properties": "1.4.1"
+  },
+  "files": [
+    "src",
+    "fonts"
+  ]
 }

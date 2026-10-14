@@ -7,10 +7,12 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "test": "node --test"
+    "test": "node --test",
+    "verify:svg-formats": "node scripts/verify-svg-formats.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
-    "markdown-it": "^14.3.0"
+    "markdown-it": "^14.3.0",
+    "saxes": "6.0.0"
   }
 }

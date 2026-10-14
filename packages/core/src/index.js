@@ -1,56 +1,4 @@
-const DEFAULT_SYMBOLS = {
-  '<->': '↔',
-  '->': '→',
-  '<-': '←',
-  '|-': '⊢',
-  '|=': '⊨',
-  '/\\': '∧',
-  '\\/': '∨',
-  '~': '¬',
-  forall: '∀',
-  exists: '∃',
-  GAMMA: 'Γ',
-  DELTA: 'Δ',
-  TAU: 'Τ',
-  PI: 'Π',
-  THETA: 'Θ',
-  SIGMA: 'Σ',
-  alpha: 'α',
-  beta: 'β',
-  gamma: 'γ',
-  delta: 'δ',
-  epsilon: 'ε',
-  theta: 'θ',
-  lambda: 'λ',
-  mu: 'μ',
-  pi: 'π',
-  tau: 'τ',
-  eta: 'η',
-  rho: 'ρ',
-  sigma: 'σ',
-  phi: 'φ',
-  omega: 'ω',
-  box: '□',
-  diamond: '◇',
-  always: '□',
-  eventually: '◇',
-  next: '○',
-  until: 'U',
-  release: 'R',
-  '-*': '⊸',
-  '-o': '⊸',
-  tensor: '⊗',
-  par: '⅋',
-  with: '&',
-  plus: '⊕',
-  one: '1',
-  zero: '0',
-  bottom: '⊥',
-  bot: '⊥',
-  top: '⊤',
-  union: '∪',
-  intersect: '∩'
-};
+import { normalizeFormula } from './symbols.js';
 
 const identifier = '[A-Za-z_][A-Za-z0-9_-]*';
 const ruleHeader = new RegExp(`^(${identifier})\\s*(?::=|::=)$`);
@@ -424,7 +372,7 @@ function renderHastNode(node, options) {
       element('div', { className: ['sequent-family-grid'] }, node.rules.map((rule) => renderHastNode(rule, options)))
     ]);
   }
-  if (node.type === 'formula') return element('span', { className: ['sequent-formula'] }, [text(applyAliases(node.value, { ...DEFAULT_SYMBOLS, ...(options.symbols ?? {}) }))]);
+  if (node.type === 'formula') return element('span', { className: ['sequent-formula'] }, [text(normalizeFormula(node.value, options.symbols))]);
   const label = node.name ? [element('span', { className: ['sequent-rule-label'] }, [text(node.name)])] : [];
   return element('div', { className: ['sequent-proof-container'] }, [
     element('figure', { className: ['sequent-proof'] }, [
@@ -444,18 +392,7 @@ function text(value) {
 }
 
 function renderFormula(value, options) {
-  return escapeHtml(applyAliases(value, { ...DEFAULT_SYMBOLS, ...(options.symbols ?? {}) }));
-}
-
-function applyAliases(value, symbols) {
-  const entries = Object.entries(symbols).sort(([left], [right]) => right.length - left.length);
-  return entries.reduce((text, [alias, symbol]) => {
-    const escaped = escapeRegExp(alias);
-    if (/^[A-Za-z][A-Za-z0-9_]*$/.test(alias)) {
-      return text.replace(new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'gu'), symbol);
-    }
-    return text.replace(new RegExp(escaped, 'g'), symbol);
-  }, value);
+  return escapeHtml(normalizeFormula(value, options.symbols));
 }
 
 function renderDiagnostic(source, diagnostics) {
@@ -465,10 +402,6 @@ function renderDiagnostic(source, diagnostics) {
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function slug(value) {

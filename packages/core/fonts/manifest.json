@@ -1,0 +1,10 @@
+{
+  "source": "https://dejavu-fonts.github.io/",
+  "files": {
+    "DejaVuSerif.ttf": "42d1edeb7952f31b1f96d767ed7030b08a39e0c372b0071641518864e2bffb51",
+    "DejaVuSerif-Italic.ttf": "2e39b1d50f90b933b00c7bb54a96afd3f86419b3d717c7cf202e36f2d4973e47",
+    "DejaVuSerif-Bold.ttf": "c47b5527bcdc8dcf9ea8c77054454c5a884beaca2f44851a2a823ee639cbf07f",
+    "DejaVuSansMono.ttf": "b4a6c3e4faab8773f4ff761d56451646409f29abedd68f05d38c2df667d3c582",
+    "DejaVu-license.txt": "e81d9dced49fea2a7d576cbea283873de58563c5d488f954deb282843c3ea79c"
+  }
+}
