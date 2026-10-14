@@ -115,16 +115,17 @@ test('reports an unmatched bracket at its source line', () => {
   assert.match(result.diagnostics[0].message, /unclosed bracket/i);
 });
 
-test('rejects extra indentation outside a bracketed derivation', () => {
+test('groups deeper formula text as a continuation', () => {
   const result = parse(`Broken :=
   A |- A
     B |- B
   ===>
   A |- A`);
 
-  assert.equal(result.tree.children.length, 0);
-  assert.equal(result.diagnostics[0].line, 3);
-  assert.match(result.diagnostics[0].message, /indentation/i);
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.tree.children[0].premises, [
+    { type: 'formula', value: 'A |- A\n  B |- B' }
+  ]);
 });
 
 test('accepts compact adjacent bracket groups as sibling premises', () => {

@@ -1,0 +1,5 @@
+K-Interface-Argument :=
+    for each corresponding (argument_i, parameter_i),
+      DELTA; OMEGA; XI |- argument_i => kind(parameter_i)
+    ===>
+    DELTA; OMEGA; XI; IOTA |- constraint Interface(arguments) ok

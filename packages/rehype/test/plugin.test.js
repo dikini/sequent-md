@@ -1,7 +1,37 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { rehypeSequent } from '../src/index.js';
+
+const continuation = await readFile(new URL('../../core/test/fixtures/sequent-continuation.sequent', import.meta.url), 'utf8');
+
+function transformFence(source) {
+  const tree = { type: 'root', children: [{ type: 'element', tagName: 'pre', properties: {}, children: [{
+    type: 'element', tagName: 'code', properties: { className: ['language-sequent'] },
+    children: [{ type: 'text', value: source }]
+  }] }] };
+  rehypeSequent()(tree);
+  return tree.children[0];
+}
+
+test('keeps a continued judgment inside one premise in rehype', () => {
+  const document = transformFence(continuation);
+  assert.deepEqual(document.properties.className, ['sequent-document']);
+  const premises = document.children[0].children[0].children[0];
+  assert.deepEqual(premises.properties.className, ['sequent-premises']);
+  assert.equal(premises.children.length, 1);
+  assert.equal(premises.children[0].children[0].value,
+    'for each corresponding (argument_i, parameter_i),\n  Δ; OMEGA; XI ⊢ argument_i => kind(parameter_i)');
+});
+
+test('retains complete invalid continuation source in rehype', () => {
+  const source = 'Bad :=\n  ===>\n    <invalid> & value';
+  const result = transformFence(source);
+  assert.equal(result.tagName, 'pre');
+  assert.deepEqual(result.properties.className, ['sequent-diagnostic']);
+  assert.ok(result.children[0].value.endsWith(source));
+});
 
 test('replaces sequent code blocks with semantic proof HAST', () => {
   const tree = {

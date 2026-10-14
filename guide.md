@@ -17,8 +17,8 @@ Identity :=
 ```
 
 An operator immediately below the rule header means the rule has no premises:
-it is an axiom. Otherwise, each unbracketed formula line and each complete
-bracket group before the operator is one premise.
+it is an axiom. Otherwise, each unbracketed formula starting at the body
+indentation and each complete bracket group before the operator is one premise.
 
 ## Premises and proof trees
 
@@ -49,6 +49,41 @@ Apply :=
 
 `|` is ordinary formula text, not a premise separator. Use it freely in a
 formula; use adjacent bracket groups for parallel proof branches.
+
+## Continued formulae
+
+Indent a formula's following lines farther to continue the same premise or
+conclusion. The renderer preserves line breaks and hanging indentation inside
+that one formula, rather than treating the lines as sibling premises.
+
+```sequent
+K-Interface-Argument :=
+    for each corresponding (argument_i, parameter_i),
+      DELTA; OMEGA; XI |- argument_i => kind(parameter_i)
+    ===>
+    DELTA; OMEGA; XI; IOTA |- constraint Interface(arguments) ok
+
+Wrapped-Conclusion :=
+    GAMMA |- function
+      ⇒ Function(domain, codomain)
+    GAMMA |- argument ⇐ domain
+    ===>
+    GAMMA |- function argument
+      ⇒ codomain
+```
+
+Returning to the body indentation starts a sibling premise; after the deduction
+operator it would start a second conclusion, which is invalid. The standalone
+deduction operator must align with the body indentation. An inline `=>` remains
+formula text.
+
+Continuations may indent farther again, then return to an established indentation
+level. Dedenting to a level not established in the current formula is invalid.
+Each new sibling formula resets those levels. Blank lines are ignored.
+
+A continuation must follow an unbracketed formula, not a deduction operator or a
+completed bracket group. These continuation rules apply outside bracketed
+derivations; bracket-internal layout retains its existing behavior.
 
 ## Related rules
 
