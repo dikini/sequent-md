@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { build } from 'esbuild';
+import { create } from 'fontkit';
 import test from 'node:test';
 import { SaxesParser } from 'saxes';
 import { renderSvg } from '@sequent-md/core/svg';
@@ -202,6 +203,80 @@ test('unbreakable tokens expand bounds rather than clipping or shrinking', async
 test('breakable formulae honor target width despite spaces at inserted wraps', async () => {
   const scene = await layout('Quantified :=\n  for each corresponding argument and parameter in the environment,\n    DELTA; OMEGA; XI |- argument => kind(parameter)\n  GAMMA |- another premise with enough words to wrap across a narrow page\n  ===>\n  GAMMA |- the resulting expression has the expected computation type\n    with preserved hanging indentation');
   assert.ok(scene.width <= 320.000001, `breakable layout is ${scene.width}px wide`);
+});
+
+test('wrapped RTL glyphs use the same shaped run as their measured bounds', async () => {
+  const regular = await readFile(new URL('../fonts/DejaVuSansMono.ttf', import.meta.url));
+  const source = 'R :=\n  ===>\n  ا        ا';
+  const scene = layoutDocument(parse(source).tree, await typography({ fonts: { regular } }),
+    { fontSize: 17, maxWidth: 100 });
+  assert.ok(scene.glyphs.every((g) => g.ink.minX >= 0 && g.ink.maxX <= scene.width),
+    JSON.stringify({ width: scene.width, glyphs: scene.glyphs.map((g) => g.ink) }));
+  assert.equal(scene.texts.filter((t) => t.role === 'formula').map((t) => t.text).join(''), 'ا        ا');
+  assertPortable(await renderSvg(source, { maxWidth: 100, fonts: { regular } }));
+});
+
+test('same-face mixed-script text preserves Arabic joining and visual run order', async () => {
+  const regular = await readFile(new URL('../fonts/DejaVuSansMono.ttf', import.meta.url));
+  const font = create(regular);
+  const t = await typography({ fonts: { regular } });
+  const arabic = font.layout('سلام').glyphs.map((g) => g.id);
+  const x = font.glyphForCodePoint('x'.codePointAt(0)).id;
+  assert.deepEqual(t.shape('x سلام').glyphs.map((g) => g.glyphId), [x, ...arabic]);
+  assert.deepEqual(t.shape('سلام x').glyphs.map((g) => g.glyphId), [x, ...arabic]);
+  assertPortable(await renderSvg('R :=\n  ===>\n  x سلام', { fonts: { regular } }));
+});
+
+test('inserted wraps retain the original source line bidi context', async () => {
+  const regular = await readFile(new URL('../fonts/DejaVuSansMono.ttf', import.meta.url));
+  const font = create(regular);
+  const scene = await layout('R :=\n  ===>\n  abcabcabcabc سلام def', { maxWidth: 170, fonts: { regular } });
+  const lines = scene.texts.filter((t) => t.role === 'formula');
+  assert.deepEqual(lines.map((t) => t.text), ['abcabcabcabc ', 'سلام def']);
+  const glyphs = scene.glyphs.filter((g) => g.y >= lines[1].y && g.y < lines[1].y + lines[1].height);
+  assert.deepEqual(glyphs.map((g) => g.glyphId), [...font.layout('سلام').glyphs.map((g) => g.id),
+    ...font.layout('def').glyphs.map((g) => g.id)]);
+});
+
+test('bidi runs retain LTR digits inside an RTL paragraph', async () => {
+  const regular = await readFile(new URL('../fonts/DejaVuSansMono.ttf', import.meta.url));
+  const font = create(regular);
+  const t = await typography({ fonts: { regular } });
+  const digits = font.layout('123').glyphs.map((g) => g.id);
+  const arabic = font.layout('سلام').glyphs.map((g) => g.id);
+  assert.deepEqual(t.shape('سلام 123').glyphs.map((g) => g.glyphId), [...digits, ...arabic]);
+});
+
+test('paired punctuation is mirrored once around LTR digits in RTL text', async () => {
+  const regular = await readFile(new URL('../fonts/DejaVuSansMono.ttf', import.meta.url));
+  const font = create(regular);
+  const t = await typography({ fonts: { regular } });
+  const expected = [font.glyphForCodePoint(40).id, ...font.layout('123').glyphs.map((g) => g.id),
+    font.glyphForCodePoint(41).id, ...font.layout('سلام').glyphs.map((g) => g.id)];
+  assert.deepEqual(t.shape('سلام (123)').glyphs.map((g) => g.glyphId), expected);
+});
+
+test('combining sequences stay together across same-face script boundaries', async () => {
+  const regular = await readFile(new URL('../fonts/DejaVuSansMono.ttf', import.meta.url));
+  const font = create(regular);
+  const t = await typography({ fonts: { regular } });
+  const text = 'سَلام';
+  const arabic = font.layout(text).glyphs.filter((g) => g.path.toSVG()).map((g) => g.id);
+  const x = font.glyphForCodePoint('x'.codePointAt(0)).id;
+  assert.deepEqual(t.shape('x ' + text).glyphs.map((g) => g.glyphId), [x, ...arabic]);
+});
+
+test('supplied fonts without a shaping engine fail explicitly for RTL text', async () => {
+  const regular = Buffer.from(await readFile(new URL('../fonts/DejaVuSansMono.ttf', import.meta.url)));
+  for (let i = 0; i < regular.readUInt16BE(4); i += 1) {
+    const offset = 12 + i * 16;
+    if (['GSUB', 'GPOS'].includes(regular.toString('ascii', offset, offset + 4))) {
+      regular.write('none', offset, 4, 'ascii');
+    }
+  }
+  const t = await typography({ fonts: { regular } });
+  assert.ok(t.shape('abc').glyphs.length);
+  assert.throws(() => t.shape('اب'), /RTL shaping requires.*regular/);
 });
 
 test('whitespace, tabs, combining glyphs and italic bearings are measured', async () => {

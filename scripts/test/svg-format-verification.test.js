@@ -84,3 +84,27 @@ test('format acceptance requires nonempty HTML and EPUB image alternative text',
   assert.throws(() => verifyImageAlternatives('<img src="proof.svg" alt="Proof">', emptyEpub, 1), /EPUB.*alternative text/);
   assert.throws(() => verifyImageAlternatives('<img src="proof.svg" alt="Proof">', epub, 2), /Expected 2/);
 });
+
+test('relative CLI toolchain paths become absolute before render cwd changes', () => {
+  const tools = resolveTools(parseOptions(['--toolchain', '../toolchain']), '/invocation/repo');
+  assert.equal(tools.quarto, '/invocation/toolchain/quarto-1.10.19/bin/quarto');
+  assert.equal(tools.typst, '/invocation/toolchain/quarto-1.10.19/bin/tools/x86_64/typst');
+  assert.equal(tools.epubcheck, '/invocation/toolchain/epubcheck-5.4.0/epubcheck.jar');
+});
+
+test('relative CLI executable and jar paths resolve from invocation cwd', () => {
+  const tools = resolveTools(parseOptions(['--quarto', './bin/quarto', '--typst', '../tools/typst', '--java', './java', '--epubcheck', 'check.jar']), '/invocation/repo');
+  assert.deepEqual(tools, { quarto: '/invocation/repo/bin/quarto', typst: '/invocation/tools/typst', java: '/invocation/repo/java', epubcheck: '/invocation/repo/check.jar' });
+});
+
+test('relative environment paths receive the same resolution as CLI paths', () => {
+  const env = { SEQUENT_SVG_TOOLCHAIN: '../toolchain', SEQUENT_SVG_QUARTO: './bin/quarto', SEQUENT_SVG_TYPST: '../tools/typst', SEQUENT_SVG_JAVA: './java', SEQUENT_SVG_EPUBCHECK: 'check.jar' };
+  const tools = resolveTools(parseOptions([], env), '/invocation/repo');
+  assert.deepEqual(tools, { quarto: '/invocation/repo/bin/quarto', typst: '/invocation/tools/typst', java: '/invocation/repo/java', epubcheck: '/invocation/repo/check.jar' });
+  assert.equal(resolveTools(parseOptions([], { SEQUENT_SVG_TOOLCHAIN: '../toolchain' }), '/invocation/repo').quarto, '/invocation/toolchain/quarto-1.10.19/bin/quarto');
+});
+
+test('bare executable names keep PATH lookup while the jar remains a file path', () => {
+  const tools = resolveTools(parseOptions(['--quarto', 'quarto', '--typst', 'typst', '--java', 'java', '--epubcheck', 'epubcheck.jar']), '/invocation/repo');
+  assert.deepEqual(tools, { quarto: 'quarto', typst: 'typst', java: 'java', epubcheck: '/invocation/repo/epubcheck.jar' });
+});

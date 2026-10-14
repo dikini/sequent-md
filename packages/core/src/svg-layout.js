@@ -20,14 +20,15 @@ export function layoutDocument(tree, typography, { maxWidth = 320, fontSize = 17
   const thickness = em / 17;
   let nextOwner = 0;
 
-  function textBox(text, face, role) {
-    const shaped = typography.shape(text, face);
-    // An inserted wrap retains separator spaces in text, but their invisible
-    // trailing advances must not make an otherwise fitting line overflow.
-    const width = role === 'formula' ? typography.shape(text.trimEnd(), face).width : shaped.width;
-    const result = box(width, shaped.height);
+  function textBox(text, face, role, context) {
+    // Draw and measure exactly the same run. Trailing separators at an inserted
+    // wrap remain in the logical text, but are excluded before shaping; in RTL
+    // text they would otherwise move the visible glyphs as well as the advance.
+    const shaped = typography.shape(role === 'formula' ? text.trimEnd() : text, face, context);
+    const result = box(shaped.width, shaped.height);
     result.glyphs = shaped.glyphs;
-    result.texts.push({ text: shaped.text, role, x: 0, y: 0, width, height: shaped.height });
+    result.texts.push({ text: typography.expandTabs(text), role, x: 0, y: 0,
+      width: shaped.width, height: shaped.height });
     return result;
   }
 
@@ -38,28 +39,33 @@ export function layoutDocument(tree, typography, { maxWidth = 320, fontSize = 17
     for (const raw of normalized.split('\n')) {
       const line = typography.expandTabs(raw);
       const indent = line.match(/^ */)[0];
+      const embedding = typography.paragraphContext(line);
+      let offset = indent.length;
       const tokens = [];
       for (const character of line.slice(indent.length)) {
         const breakable = /\s/u.test(character) && character !== '\u00a0' && character !== '\u202f';
         if (tokens.at(-1)?.breakable === breakable) tokens.at(-1).text += character;
-        else tokens.push({ text: character, breakable });
+        else tokens.push({ text: character, breakable, start: offset });
+        offset += character.length;
       }
       const lines = [];
       let current = indent;
       let pending = '';
+      let context = { embedding, start: 0, indent: 0 };
       for (const token of tokens) {
         if (token.breakable) { pending += token.text; continue; }
         const candidate = current + pending + token.text;
-        if (current !== indent && typography.shape(candidate).width > width) {
+        if (current !== indent && typography.shape(candidate, 'regular', context).width > width) {
           // Spaces at an inserted wrap stay at the end of the preceding line.
-          lines.push(current + pending);
+          lines.push({ text: current + pending, context });
           current = indent + token.text;
+          context = { embedding, start: token.start, indent: indent.length };
         } else current = candidate;
         pending = '';
       }
-      lines.push(current + pending);
-      for (const text of lines) {
-        const child = textBox(text, 'regular', 'formula');
+      lines.push({ text: current + pending, context });
+      for (const { text, context } of lines) {
+        const child = textBox(text, 'regular', 'formula', context);
         place(result, child, 0, result.height);
         result.width = Math.max(result.width, child.width);
         result.height += child.height;

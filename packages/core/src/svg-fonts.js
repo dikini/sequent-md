@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { create } from 'fontkit';
+import { shapingRuns, paragraphContext, sliceContext } from './svg-shaping.js';
 
 const defaultFiles = {
   regular: 'DejaVuSerif.ttf', italic: 'DejaVuSerif-Italic.ttf',
@@ -57,13 +58,12 @@ export async function loadTypography({ fontSize = 17, fonts = {} } = {}) {
   const cache = new Map();
   const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
 
-  function shape(input, role = 'regular') {
+  function shape(input, role = 'regular', context) {
     const text = expandTabs(input);
-    const key = `${role}\0${text}`;
+    const embedding = context && sliceContext(context.embedding, context.start, text.length, context.indent);
+    const key = `${role}\0${text}\0${embedding ? [...embedding.levels].join(',') + ':' + embedding.paragraphs[0].level : 'auto'}`;
     if (cache.has(key)) return cache.get(key);
-    const runs = [];
-    for (const { segment } of segmenter.segment(text)) {
-      const points = [...segment].map((character) => character.codePointAt(0));
+    const runs = shapingRuns(text, segmenter, (points) => {
       const face = [faces[role], ...fallbacks].find(({ font }) =>
         points.every((point) => font.hasGlyphForCodePoint(point)));
       if (!face) {
@@ -72,17 +72,22 @@ export async function loadTypography({ fontSize = 17, fonts = {} } = {}) {
         const names = (missing.length ? missing : points).map((point) => `U+${point.toString(16).toUpperCase().padStart(4, '0')}`);
         throw new Error(`Missing glyph coverage for ${names.join(', ')} in ${role} text: ${JSON.stringify(input)}`);
       }
-      if (runs.at(-1)?.face === face) runs.at(-1).text += segment;
-      else runs.push({ face, text: segment });
-    }
+      return face;
+    }, embedding);
 
     const glyphs = [];
     let advance = 0;
     let ascent = faces[role].font.ascent / faces[role].font.unitsPerEm * fontSize;
     let descent = -faces[role].font.descent / faces[role].font.unitsPerEm * fontSize;
     const ink = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-    for (const { face, text: runText } of runs) {
-      const run = face.font.layout(runText);
+    for (const { face, text: runText, direction } of runs) {
+      if (direction === 'rtl' && !face.font.morx && !face.font.GSUB && !face.font.GPOS) {
+        throw new Error(`RTL shaping requires an OpenType or AAT layout table in ${face.key} font.`);
+      }
+      // The run is script-homogeneous, so Fontkit can infer its OpenType tag.
+      // Unicode mirroring was already applied; disable the font's rtlm feature
+      // to avoid mirroring an outline a second time.
+      const run = face.font.layout(runText, { rtlm: false }, undefined, undefined, direction);
       const scale = fontSize / face.font.unitsPerEm;
       ascent = Math.max(ascent, face.font.ascent * scale);
       descent = Math.max(descent, -face.font.descent * scale);
@@ -122,5 +127,5 @@ export async function loadTypography({ fontSize = 17, fonts = {} } = {}) {
     cache.set(key, result);
     return result;
   }
-  return { shape, expandTabs, fontSize };
+  return { shape, expandTabs, paragraphContext, fontSize };
 }

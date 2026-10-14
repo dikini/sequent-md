@@ -31,7 +31,10 @@ installs prerequisites nor edits Ash sources, adapters, or toolchain files.
 Individual executable locations can be supplied with `--quarto`, `--typst`,
 `--epubcheck` (the JAR), and `--java`. Equivalent environment variables are
 `SEQUENT_SVG_TOOLCHAIN`, `SEQUENT_SVG_QUARTO`, `SEQUENT_SVG_TYPST`,
-`SEQUENT_SVG_EPUBCHECK`, and `SEQUENT_SVG_JAVA`. Command arguments take precedence.
+`SEQUENT_SVG_EPUBCHECK`, and `SEQUENT_SVG_JAVA`. Command arguments take precedence. Relative toolchain directories, executable
+paths containing a slash, and EPUBCheck JAR paths resolve from the directory in
+which you invoke the command, before rendering changes directories. Bare
+executable names such as `java` continue to use `PATH` lookup.
 
 The default output directory is the ignored
 `node_modules/.cache/svg-format-verification`. Set `--output /absolute/path` to

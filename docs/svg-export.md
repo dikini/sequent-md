@@ -69,9 +69,18 @@ await renderSvg(source, {
 Omitted faces keep their bundled defaults. An explicit `fallback` array replaces
 the bundled fallback list, in the given order; `[]` disables fallback. Static
 outline fonts are supported; collections, variable fonts, and glyphs requiring
-bitmap/color rendering are not supported by this exporter. Fallback selection
+bitmap/color rendering are not supported by this exporter. RTL shaping
+requires an OpenType (GSUB/GPOS) or AAT (morx) layout table for RTL runs;
+supplied fonts without one fail explicitly for RTL text. Fallback selection
 keeps combining sequences together, then shapes contiguous runs with their
-selected face. Export does not consult system fonts or fetch font resources.
+selected face. Runs also split at Unicode script and bidi embedding boundaries,
+use explicit shaping direction, and are placed in resolved visual order. This
+keeps Arabic joining and LTR digit order intact in mixed-direction text. Visible
+wraps retain the resolved bidi context of their original explicit source line.
+Visible run bounds and outlines always come from the same shaping operation. Separator
+spaces at an inserted wrap remain in canonical/logical text but are trimmed
+before both measuring and drawing that visual line.
+Export does not consult system fonts or fetch font resources.
 
 The same source, font bytes, options, and pinned runtime produce byte-identical
 SVG. Glyph definitions and fragment references have deterministic identifiers.

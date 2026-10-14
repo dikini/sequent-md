@@ -27,12 +27,15 @@ export function parseOptions(args, env = process.env) {
   return options;
 }
 
-export function resolveTools(options) {
+export function resolveTools(options, invocationCwd = process.cwd()) {
+  const toolchain = options.toolchain && resolve(invocationCwd, options.toolchain);
+  const executable = path => path && (isAbsolute(path) || path.includes('/') || path.includes('\\') ? resolve(invocationCwd, path) : path);
+  const epubcheck = options.epubcheck || (toolchain && join(toolchain, 'epubcheck-5.4.0/epubcheck.jar'));
   return {
-    quarto: options.quarto || (options.toolchain && join(options.toolchain, 'quarto-1.10.19/bin/quarto')),
-    typst: options.typst || (options.toolchain && join(options.toolchain, 'quarto-1.10.19/bin/tools/x86_64/typst')),
-    epubcheck: options.epubcheck || (options.toolchain && join(options.toolchain, 'epubcheck-5.4.0/epubcheck.jar')),
-    java: options.java,
+    quarto: executable(options.quarto || (toolchain && join(toolchain, 'quarto-1.10.19/bin/quarto'))),
+    typst: executable(options.typst || (toolchain && join(toolchain, 'quarto-1.10.19/bin/tools/x86_64/typst'))),
+    epubcheck: epubcheck && resolve(invocationCwd, epubcheck),
+    java: executable(options.java),
   };
 }
 
