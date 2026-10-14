@@ -43,6 +43,33 @@ import {rehypeSequent} from '@sequent-md/rehype';
 processor.use(rehypeSequent);
 ```
 
+### Portable SVG images
+
+Use the separate Node exporter to create a standalone image with outlined
+glyphs. The bundled fonts make the image independent of reader fonts.
+
+```js
+import {writeFile} from 'node:fs/promises';
+import {renderSvg} from '@sequent-md/core/svg';
+
+const result = await renderSvg(source, {
+  maxWidth: 320,
+  title: 'Conjunction introduction',
+  description: 'Two premises establish a conjunction.'
+});
+if (result.diagnostics.length) throw new Error(JSON.stringify(result.diagnostics));
+await writeFile('proof.svg', result.svg);
+```
+
+The exporter retains the parsed tree, canonical source, and diagnostic behavior.
+It wraps formula text at whitespace and packs premises into rows to target the
+requested width. Explicit continuation breaks and hanging indentation remain
+visible. Unbreakable tokens or long labels can require a wider image.
+
+See [SVG export](docs/svg-export.md) for options, custom fonts, and accessibility,
+and [format verification](docs/svg-format-verification.md) for HTML, EPUB, and
+Typst PDF checks. HTML previews keep their existing layout.
+
 ### VS Code Markdown Preview
 
 Build and package the included extension, then install the resulting VSIX:
